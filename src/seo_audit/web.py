@@ -39,124 +39,325 @@ async def index():
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>SEO Audit Toolkit - Automated Website Audit</title>
+  <title>SEO Audit Toolkit — Elegant Automated Auditor</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
   <style>
     :root {
-      --bg: #F8FAFC;
+      --bg: #FAFAF9;
       --surface: #FFFFFF;
-      --text: #0F172A;
-      --muted: #64748B;
-      --border: #E2E8F0;
-      --primary: #0F766E;
-      --primary-hover: #115E59;
+      --surface-subtle: #F5F5F4;
+      --border: #E7E5E4;
+      --border-focus: #1C1917;
+      --text: #1C1917;
+      --text-muted: #78716C;
+      --text-light: #A8A29E;
+      --accent: #0F766E;
+      --accent-hover: #115E59;
+      --radius-sm: 6px;
+      --radius-md: 10px;
+      --radius-lg: 16px;
+      --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.04);
+      --shadow-card: 0 4px 20px -2px rgba(0, 0, 0, 0.04), 0 2px 6px -1px rgba(0, 0, 0, 0.02);
     }
     * { box-sizing: border-box; margin: 0; padding: 0; }
     body {
-      font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
-      background: var(--bg);
+      font-family: 'Plus Jakarta Sans', system-ui, -apple-system, sans-serif;
+      background-color: var(--bg);
       color: var(--text);
-      line-height: 1.5;
-      padding: 32px 16px;
+      line-height: 1.6;
+      -webkit-font-smoothing: antialiased;
+      padding: 64px 20px;
     }
-    .wrapper { max-width: 800px; margin: 0 auto; }
-    .header { text-align: center; margin-bottom: 32px; }
-    h1 { font-size: 2rem; font-weight: 800; color: #0F172A; margin-bottom: 8px; }
-    p.subtitle { color: var(--muted); font-size: 1rem; }
-    .box {
+    .wrapper {
+      max-width: 680px;
+      margin: 0 auto;
+    }
+    .brand {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      padding: 4px 12px;
+      background: var(--surface-subtle);
+      border: 1px solid var(--border);
+      border-radius: 9999px;
+      font-size: 0.75rem;
+      font-weight: 600;
+      letter-spacing: 0.05em;
+      text-transform: uppercase;
+      color: var(--text-muted);
+      margin-bottom: 24px;
+    }
+    .brand-dot {
+      width: 6px;
+      height: 6px;
+      background: var(--accent);
+      border-radius: 50%;
+    }
+    .header {
+      margin-bottom: 40px;
+    }
+    h1 {
+      font-size: 2.25rem;
+      font-weight: 800;
+      letter-spacing: -0.03em;
+      color: var(--text);
+      line-height: 1.15;
+      margin-bottom: 12px;
+    }
+    p.subtitle {
+      color: var(--text-muted);
+      font-size: 1.05rem;
+      font-weight: 400;
+      max-width: 580px;
+    }
+    .card {
       background: var(--surface);
       border: 1px solid var(--border);
-      border-radius: 12px;
-      padding: 32px;
-      box-shadow: 0 1px 3px rgba(0,0,0,0.05);
+      border-radius: var(--radius-lg);
+      padding: 36px;
+      box-shadow: var(--shadow-card);
     }
-    .form-group { margin-bottom: 20px; }
-    label { display: block; font-size: 0.875rem; font-weight: 600; margin-bottom: 6px; }
+    .form-group {
+      margin-bottom: 24px;
+    }
+    label {
+      display: flex;
+      justify-content: space-between;
+      font-size: 0.825rem;
+      font-weight: 600;
+      color: var(--text);
+      margin-bottom: 8px;
+      letter-spacing: -0.01em;
+    }
+    .label-hint {
+      color: var(--text-light);
+      font-weight: 400;
+      font-size: 0.75rem;
+    }
     input[type="url"], input[type="number"] {
       width: 100%;
-      padding: 10px 14px;
+      padding: 12px 16px;
+      background: var(--surface);
       border: 1px solid var(--border);
-      border-radius: 8px;
-      font-size: 1rem;
+      border-radius: var(--radius-md);
+      font-size: 0.95rem;
       font-family: inherit;
+      color: var(--text);
+      transition: all 0.15s ease;
     }
-    input:focus { outline: 2px solid var(--primary); border-color: var(--primary); }
-    .row { display: flex; gap: 16px; }
-    .col { flex: 1; }
-    button {
+    input[type="url"] {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 0.875rem;
+    }
+    input:focus {
+      outline: none;
+      border-color: var(--border-focus);
+      box-shadow: 0 0 0 3px rgba(28, 25, 23, 0.06);
+    }
+    .grid-2 {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 16px;
+    }
+    button.btn-primary {
       width: 100%;
-      padding: 12px;
-      background: var(--primary);
-      color: white;
-      border: none;
-      border-radius: 8px;
-      font-size: 1rem;
+      padding: 14px 20px;
+      background: #1C1917;
+      color: #FAFAF9;
+      border: 1px solid #1C1917;
+      border-radius: var(--radius-md);
+      font-size: 0.95rem;
       font-weight: 600;
       cursor: pointer;
-      transition: background 0.15s ease;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      transition: all 0.2s ease;
     }
-    button:hover { background: var(--primary-hover); }
-    button:disabled { background: var(--muted); cursor: not-allowed; }
-    #status { margin-top: 24px; display: none; }
-    .alert { padding: 16px; border-radius: 8px; font-size: 0.9rem; }
-    .alert-info { background: #E0F2FE; color: #0369A1; }
-    .alert-error { background: #FEE2E2; color: #B91C1C; }
-    .actions { display: flex; gap: 12px; margin-top: 16px; }
-    .btn-secondary {
-      flex: 1;
+    button.btn-primary:hover {
+      background: #292524;
+      border-color: #292524;
+      transform: translateY(-1px);
+      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+    }
+    button.btn-primary:active {
+      transform: translateY(0);
+    }
+    button.btn-primary:disabled {
+      background: var(--text-light);
+      border-color: var(--text-light);
+      cursor: not-allowed;
+      transform: none;
+      box-shadow: none;
+    }
+    #status {
+      margin-top: 28px;
+      display: none;
+    }
+    .status-panel {
+      padding: 24px;
+      border-radius: var(--radius-md);
+      border: 1px solid var(--border);
+      background: var(--surface-subtle);
+      animation: fadeIn 0.3s ease;
+    }
+    @keyframes fadeIn {
+      from { opacity: 0; transform: translateY(4px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+    .metrics-row {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 16px;
+      margin: 16px 0;
+      padding: 16px 0;
+      border-top: 1px solid var(--border);
+      border-bottom: 1px solid var(--border);
+    }
+    .metric-item {
       text-align: center;
-      padding: 10px;
-      background: #F1F5F9;
+    }
+    .metric-value {
+      font-size: 1.5rem;
+      font-weight: 800;
+      letter-spacing: -0.03em;
       color: var(--text);
-      text-decoration: none;
-      border-radius: 8px;
+    }
+    .metric-label {
+      font-size: 0.725rem;
       font-weight: 600;
-      font-size: 0.9rem;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      color: var(--text-muted);
+      margin-top: 2px;
+    }
+    .actions-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 12px;
+      margin-top: 16px;
+    }
+    .btn-action {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      padding: 11px 16px;
+      border-radius: var(--radius-md);
+      font-size: 0.875rem;
+      font-weight: 600;
+      text-decoration: none;
+      transition: all 0.15s ease;
+    }
+    .btn-view {
+      background: var(--text);
+      color: #FFFFFF;
+    }
+    .btn-view:hover {
+      background: #292524;
+    }
+    .btn-download {
+      background: var(--surface);
+      color: var(--text);
       border: 1px solid var(--border);
     }
-    .btn-secondary:hover { background: #E2E8F0; }
+    .btn-download:hover {
+      background: var(--surface-subtle);
+      border-color: #D6D3D1;
+    }
+    .spinner {
+      width: 16px;
+      height: 16px;
+      border: 2px solid rgba(255, 255, 255, 0.3);
+      border-top-color: #FFFFFF;
+      border-radius: 50%;
+      animation: spin 0.8s linear infinite;
+    }
+    @keyframes spin {
+      to { transform: rotate(360deg); }
+    }
+    footer {
+      text-align: center;
+      margin-top: 40px;
+      font-size: 0.8rem;
+      color: var(--text-light);
+    }
   </style>
 </head>
 <body>
   <div class="wrapper">
     <div class="header">
-      <h1>🔍 SEO Audit Toolkit</h1>
-      <p class="subtitle">Automated crawler checking titles, meta descriptions, H1/H2, canonicals, broken links (404), robots.txt & sitemap.xml.</p>
+      <div class="brand">
+        <span class="brand-dot"></span>
+        SEO Intelligence & Audit
+      </div>
+      <h1>Automated Website Audit. Minimal & Fast.</h1>
+      <p class="subtitle">Deep crawl for on-page SEO metrics, canonical consistency, broken links, robots.txt directives, and sitemaps.</p>
     </div>
 
-    <div class="box">
+    <div class="card">
       <form id="auditForm">
         <div class="form-group">
-          <label for="url">Target Website URL</label>
-          <input type="url" id="url" name="url" required placeholder="https://example.com" />
+          <label for="url">
+            Website URL
+            <span class="label-hint">https://example.com</span>
+          </label>
+          <input type="url" id="url" name="url" required placeholder="https://example.com" autofocus />
         </div>
-        <div class="row">
-          <div class="form-group col">
-            <label for="max_pages">Max Pages to Crawl</label>
+
+        <div class="grid-2">
+          <div class="form-group">
+            <label for="max_pages">
+              Max Pages
+              <span class="label-hint">Internal BFS</span>
+            </label>
             <input type="number" id="max_pages" name="max_pages" value="30" min="1" max="100" />
           </div>
-          <div class="form-group col">
-            <label for="max_external_links">Max External Links to Check</label>
+          <div class="form-group">
+            <label for="max_external_links">
+              Ext. Links Check
+              <span class="label-hint">Deduplicated</span>
+            </label>
             <input type="number" id="max_external_links" name="max_external_links" value="50" min="1" max="100" />
           </div>
         </div>
-        <button type="submit" id="btnSubmit">Start SEO Audit</button>
+
+        <button type="submit" id="btnSubmit" class="btn-primary">
+          <span id="btnIcon">⚡</span>
+          <span id="btnText">Run SEO Audit</span>
+        </button>
       </form>
 
       <div id="status"></div>
     </div>
+
+    <footer>
+      SEO Audit Toolkit · Powered by Python Async & FastAPI
+    </footer>
   </div>
 
   <script>
     const form = document.getElementById("auditForm");
     const btn = document.getElementById("btnSubmit");
+    const btnText = document.getElementById("btnText");
+    const btnIcon = document.getElementById("btnIcon");
     const statusBox = document.getElementById("status");
 
     form.addEventListener("submit", async (e) => {
       e.preventDefault();
       btn.disabled = true;
-      btn.innerText = "Auditing website (this may take a few seconds)...";
+      btnIcon.innerHTML = '<div class="spinner"></div>';
+      btnText.innerText = "Analyzing website...";
       statusBox.style.display = "block";
-      statusBox.innerHTML = '<div class="alert alert-info">Crawling pages, checking meta tags and verifying broken links...</div>';
+      statusBox.innerHTML = `
+        <div class="status-panel" style="text-align: center;">
+          <div style="font-size: 0.9rem; font-weight: 600; color: var(--text);">Crawling in progress</div>
+          <div style="font-size: 0.8rem; color: var(--text-muted); margin-top: 4px;">Analyzing HTML structure, status codes, and validating links...</div>
+        </div>
+      `;
 
       const payload = {
         url: document.getElementById("url").value,
@@ -173,23 +374,63 @@ async def index():
 
         const data = await resp.json();
         if (!resp.ok) {
-          throw new Error(data.detail || "Audit failed to run.");
+          throw new Error(data.detail || "Audit execution encountered an issue.");
         }
 
+        const scoreColor = data.health_score >= 80 ? '#0F766E' : data.health_score >= 50 ? '#B45309' : '#B91C1C';
+
         statusBox.innerHTML = `
-          <div class="alert alert-info" style="background:#DCFCE7; color:#15803D;">
-            <strong>Audit Complete!</strong> Health Score: <strong>${data.health_score}/100</strong> | Pages Crawled: <strong>${data.pages_crawled}</strong> | Broken Links: <strong>${data.broken_links_count}</strong>
-          </div>
-          <div class="actions">
-            <a href="/api/reports/${data.report_id}/html" target="_blank" class="btn-secondary">View HTML Report</a>
-            <a href="/api/reports/${data.report_id}/csv" class="btn-secondary">Download CSV</a>
+          <div class="status-panel">
+            <div style="display: flex; justify-content: space-between; align-items: center;">
+              <div>
+                <div style="font-size: 0.875rem; font-weight: 700; color: var(--text);">Audit Completed</div>
+                <div style="font-size: 0.775rem; color: var(--text-muted); font-family: 'JetBrains Mono', monospace;">${data.target_url}</div>
+              </div>
+              <div style="font-size: 1.5rem; font-weight: 800; color: ${scoreColor};">
+                ${data.health_score}<span style="font-size: 0.875rem; color: var(--text-light); font-weight: 500;">/100</span>
+              </div>
+            </div>
+
+            <div class="metrics-row">
+              <div class="metric-item">
+                <div class="metric-value">${data.pages_crawled}</div>
+                <div class="metric-label">Pages</div>
+              </div>
+              <div class="metric-item">
+                <div class="metric-value" style="color: ${data.broken_links_count > 0 ? '#B91C1C' : 'var(--text)'};">
+                  ${data.broken_links_count}
+                </div>
+                <div class="metric-label">Broken Links</div>
+              </div>
+              <div class="metric-item">
+                <div class="metric-value">${data.duration_seconds}s</div>
+                <div class="metric-label">Duration</div>
+              </div>
+            </div>
+
+            <div class="actions-grid">
+              <a href="/api/reports/${data.report_id}/html" target="_blank" class="btn-action btn-view">
+                <span>View HTML Report</span>
+                <span>↗</span>
+              </a>
+              <a href="/api/reports/${data.report_id}/csv" class="btn-action btn-download">
+                <span>Export CSV</span>
+                <span>↓</span>
+              </a>
+            </div>
           </div>
         `;
       } catch (err) {
-        statusBox.innerHTML = `<div class="alert alert-error"><strong>Error:</strong> ${err.message}</div>`;
+        statusBox.innerHTML = `
+          <div class="status-panel" style="border-color: #FECACA; background: #FEF2F2;">
+            <div style="font-size: 0.875rem; font-weight: 700; color: #991B1B;">Audit Failed</div>
+            <div style="font-size: 0.8rem; color: #B91C1C; margin-top: 4px;">${err.message}</div>
+          </div>
+        `;
       } finally {
         btn.disabled = false;
-        btn.innerText = "Start SEO Audit";
+        btnIcon.innerText = "⚡";
+        btnText.innerText = "Run SEO Audit";
       }
     });
   </script>
