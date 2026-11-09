@@ -72,66 +72,80 @@ def generate_csv_report(report: SiteAuditReport) -> str:
 
 
 def generate_html_report(report: SiteAuditReport) -> str:
-    """Generate self-contained, minimal and elegant HTML5 report."""
+    """Generate self-contained, light, professional Semrush/Ahrefs style HTML5 report."""
+    score = report.health_score
     score_color = (
-        "#0F766E"
-        if report.health_score >= 80
-        else "#B45309"
-        if report.health_score >= 50
-        else "#B91C1C"
+        "#10B981"
+        if score >= 80
+        else "#F59E0B"
+        if score >= 50
+        else "#EF4444"
+    )
+    score_label = (
+        "Excellent"
+        if score >= 80
+        else "Needs Attention"
+        if score >= 50
+        else "Critical Issues"
     )
 
     total_issues = sum(len(p.issues) for p in report.pages)
     total_broken = len(report.broken_links)
 
+    # Circumference calculation for gauge (r=56) -> 2 * PI * 56 ~= 351.85
+    circumference = 351.85
+    dash_offset = circumference - (score / 100) * circumference
+
     # Render pages table rows
     pages_rows = []
     for p in report.pages:
-        status_badge_bg = (
-            "#F0FDF4"
+        status_bg = (
+            "#ECFDF5"
             if p.status_code and p.status_code < 300
             else "#FFFBEB"
             if p.status_code and p.status_code < 400
             else "#FEF2F2"
         )
-        status_badge_border = (
-            "#DCFCE7"
+        status_border = (
+            "#A7F3D0"
             if p.status_code and p.status_code < 300
-            else "#FEF3C7"
+            else "#FDE68A"
             if p.status_code and p.status_code < 400
-            else "#FEE2E2"
+            else "#FECACA"
         )
-        status_badge_color = (
-            "#15803D"
+        status_color = (
+            "#065F46"
             if p.status_code and p.status_code < 300
-            else "#B45309"
+            else "#92400E"
             if p.status_code and p.status_code < 400
-            else "#B91C1C"
+            else "#991B1B"
         )
         status_text = str(p.status_code) if p.status_code else "ERR"
 
         issues_html = (
             "".join(
-                f'<span class="tag tag-issue">{html.escape(i)}</span>'
+                f'<span class="tag-pill tag-warn">{html.escape(i)}</span>'
                 for i in p.issues
             )
             if p.issues
-            else '<span class="tag tag-ok">Healthy</span>'
+            else '<span class="tag-pill tag-ok">✓ Healthy</span>'
         )
 
         pages_rows.append(
             f"""
             <tr>
-              <td class="mono font-xs cell-url"><a href="{html.escape(p.url)}" target="_blank" class="table-link">{html.escape(p.url)}</a></td>
-              <td><span class="badge" style="background:{status_badge_bg}; border-color:{status_badge_border}; color:{status_badge_color}">{status_text}</span></td>
-              <td class="mono font-xs muted">{p.response_time_ms:.0f}ms</td>
-              <td>
-                <div class="cell-title">{html.escape(p.title or '—')}</div>
-                <div class="muted font-xxs">{p.title_length} chars</div>
+              <td class="mono font-xs cell-url">
+                <a href="{html.escape(p.url)}" target="_blank" class="table-link font-medium">{html.escape(p.url)}</a>
               </td>
-              <td class="center font-sm">{len(p.h1_list)}</td>
-              <td class="mono font-xxs muted cell-url">{html.escape(p.canonical_url or '—')}</td>
-              <td><div class="tags-wrapper">{issues_html}</div></td>
+              <td><span class="status-badge" style="background:{status_bg}; border-color:{status_border}; color:{status_color}">{status_text}</span></td>
+              <td class="mono font-xs text-muted">{p.response_time_ms:.0f}ms</td>
+              <td>
+                <div class="cell-title font-medium">{html.escape(p.title or '—')}</div>
+                <div class="text-muted font-xxs">{p.title_length} characters</div>
+              </td>
+              <td class="text-center font-sm font-semibold">{len(p.h1_list)}</td>
+              <td class="mono font-xxs text-muted cell-url">{html.escape(p.canonical_url or '—')}</td>
+              <td><div class="tags-flex">{issues_html}</div></td>
             </tr>
             """
         )
@@ -140,18 +154,18 @@ def generate_html_report(report: SiteAuditReport) -> str:
     broken_rows = []
     for bl in report.broken_links:
         ext_badge = (
-            '<span class="badge badge-ext">External</span>'
+            '<span class="scope-pill scope-ext">External</span>'
             if bl.is_external
-            else '<span class="badge badge-int">Internal</span>'
+            else '<span class="scope-pill scope-int">Internal</span>'
         )
         broken_rows.append(
             f"""
             <tr>
               <td class="mono font-xs cell-url">{html.escape(bl.source_url)}</td>
-              <td class="mono font-xs cell-url font-medium">{html.escape(bl.target_url)}</td>
+              <td class="mono font-xs cell-url font-semibold text-danger">{html.escape(bl.target_url)}</td>
               <td>{ext_badge}</td>
               <td class="font-xs">{html.escape(bl.anchor_text or '—')}</td>
-              <td><span class="badge badge-err">{html.escape(bl.error or str(bl.status_code))}</span></td>
+              <td><span class="status-badge status-err">{html.escape(bl.error or str(bl.status_code))}</span></td>
             </tr>
             """
         )
@@ -163,14 +177,14 @@ def generate_html_report(report: SiteAuditReport) -> str:
     )
 
     robots_badge = (
-        '<span class="status-indicator pass"><span class="dot"></span>Accessible</span>'
+        '<span class="directive-tag pass"><span class="bullet"></span>Valid & Present</span>'
         if report.site_meta.robots_found
-        else '<span class="status-indicator warn"><span class="dot"></span>Not Found</span>'
+        else '<span class="directive-tag warn"><span class="bullet"></span>Not Found</span>'
     )
     sitemap_badge = (
-        f'<span class="status-indicator pass"><span class="dot"></span>Valid ({report.site_meta.sitemap_url_count} URLs)</span>'
+        f'<span class="directive-tag pass"><span class="bullet"></span>Valid XML ({report.site_meta.sitemap_url_count} URLs)</span>'
         if report.site_meta.sitemap_found and report.site_meta.sitemap_valid_xml
-        else '<span class="status-indicator warn"><span class="dot"></span>Missing / Invalid</span>'
+        else '<span class="directive-tag warn"><span class="bullet"></span>Missing / Invalid</span>'
     )
 
     return f"""<!DOCTYPE html>
@@ -179,145 +193,216 @@ def generate_html_report(report: SiteAuditReport) -> str:
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>SEO Audit Report - {html.escape(report.target_url)}</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
   <style>
     :root {{
-      --bg: #FAFAF9;
+      --bg: #F8FAFC;
       --surface: #FFFFFF;
-      --border: #E7E5E4;
-      --border-subtle: #F0F0EE;
-      --text: #1C1917;
-      --text-muted: #78716C;
-      --text-light: #A8A29E;
-      --radius: 12px;
-      --shadow: 0 1px 3px rgba(0,0,0,0.03), 0 6px 16px -4px rgba(0,0,0,0.02);
+      --surface-subtle: #F1F5F9;
+      --border: #E2E8F0;
+      --border-subtle: #EDF2F7;
+      --text: #0F172A;
+      --text-muted: #64748B;
+      --text-light: #94A3B8;
+      
+      --ahrefs-blue: #005BFF;
+      --semrush-orange: #FF642D;
+      --green: #10B981;
+      --amber: #F59E0B;
+      --red: #EF4444;
+
+      --radius-sm: 6px;
+      --radius-md: 10px;
+      --radius-lg: 14px;
+      --radius-xl: 18px;
+      --shadow-sm: 0 1px 3px rgba(15, 23, 42, 0.04);
+      --shadow-card: 0 4px 16px -2px rgba(15, 23, 42, 0.06), 0 2px 4px -1px rgba(15, 23, 42, 0.03);
     }}
+
     * {{ box-sizing: border-box; margin: 0; padding: 0; }}
     body {{
-      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
-      background: var(--bg);
+      font-family: 'Plus Jakarta Sans', system-ui, -apple-system, sans-serif;
+      background-color: var(--bg);
       color: var(--text);
       line-height: 1.5;
-      padding: 48px 24px;
+      padding: 40px 24px 80px;
       -webkit-font-smoothing: antialiased;
     }}
-    .container {{ max-width: 1280px; margin: 0 auto; }}
-    
-    header {{
+    .container {{ max-width: 1240px; margin: 0 auto; }}
+
+    /* Semrush / Ahrefs Style Top Header Banner */
+    .report-header-card {{
       background: var(--surface);
       border: 1px solid var(--border);
-      border-radius: var(--radius);
-      padding: 28px 32px;
-      margin-bottom: 24px;
-      display: flex;
-      justify-content: space-between;
+      border-radius: var(--radius-xl);
+      padding: 36px 40px;
+      margin-bottom: 28px;
+      display: grid;
+      grid-template-columns: 1fr 240px;
+      gap: 32px;
       align-items: center;
-      box-shadow: var(--shadow);
+      box-shadow: var(--shadow-card);
     }}
-    .brand-tag {{
-      font-size: 0.725rem;
-      font-weight: 700;
-      text-transform: uppercase;
+    .eyebrow {{
+      font-size: 0.75rem;
+      font-weight: 800;
       letter-spacing: 0.08em;
-      color: var(--text-light);
-      margin-bottom: 4px;
+      text-transform: uppercase;
+      color: var(--ahrefs-blue);
+      margin-bottom: 8px;
     }}
-    h1 {{
-      font-size: 1.5rem;
-      font-weight: 700;
-      letter-spacing: -0.02em;
+    h1.target-url {{
+      font-size: 2rem;
+      font-weight: 800;
+      letter-spacing: -0.03em;
+      color: var(--text);
+      word-break: break-all;
+      margin-bottom: 12px;
+      line-height: 1.2;
     }}
-    .mono {{ font-family: ui-monospace, SFMono-Regular, "JetBrains Mono", Consolas, monospace; }}
-    .font-sm {{ font-size: 0.875rem; }}
-    .font-xs {{ font-size: 0.8rem; }}
-    .font-xxs {{ font-size: 0.7rem; }}
-    .font-medium {{ font-weight: 500; }}
-    .muted {{ color: var(--text-muted); }}
-    .center {{ text-align: center; }}
-    
-    .score-badge {{
+    .meta-bar {{
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      gap: 12px;
+      font-size: 0.875rem;
+      color: var(--text-muted);
+      margin-bottom: 24px;
+    }}
+    .meta-badge {{
+      background: var(--surface-subtle);
+      border: 1px solid var(--border);
+      padding: 3px 10px;
+      border-radius: 9999px;
+      font-size: 0.75rem;
+      font-weight: 600;
+      color: var(--text);
+    }}
+
+    /* Circular SVG Gauge */
+    .gauge-box {{
       display: flex;
       flex-direction: column;
-      align-items: flex-end;
+      align-items: center;
+      text-align: center;
     }}
-    .score-num {{
-      font-size: 2.75rem;
+    .circle-gauge {{
+      width: 136px;
+      height: 136px;
+      position: relative;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }}
+    .circle-gauge svg {{
+      transform: rotate(-90deg);
+      width: 100%;
+      height: 100%;
+    }}
+    .gauge-track {{
+      fill: none;
+      stroke: #E2E8F0;
+      stroke-width: 10;
+    }}
+    .gauge-progress {{
+      fill: none;
+      stroke-width: 10;
+      stroke-linecap: round;
+    }}
+    .gauge-inner {{
+      position: absolute;
+      text-align: center;
+    }}
+    .gauge-val {{
+      font-size: 2.25rem;
       font-weight: 800;
       letter-spacing: -0.04em;
       line-height: 1;
-      color: {score_color};
     }}
-    .score-label {{
-      font-size: 0.75rem;
-      font-weight: 600;
+    .gauge-sub {{
+      font-size: 0.725rem;
+      font-weight: 700;
       text-transform: uppercase;
       letter-spacing: 0.05em;
-      color: var(--text-light);
-      margin-top: 4px;
+      margin-top: 3px;
+      color: var(--text-muted);
     }}
 
-    .grid-stats {{
+    /* Stat Cards Grid */
+    .stats-grid {{
       display: grid;
-      grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+      grid-template-columns: repeat(4, 1fr);
       gap: 16px;
-      margin-bottom: 24px;
+      margin-bottom: 28px;
     }}
-    .stat-card {{
+    .stat-box {{
       background: var(--surface);
       border: 1px solid var(--border);
-      border-radius: var(--radius);
-      padding: 20px 24px;
-      box-shadow: var(--shadow);
+      border-radius: var(--radius-lg);
+      padding: 22px 24px;
+      box-shadow: var(--shadow-sm);
     }}
-    .stat-title {{
+    .stat-label {{
       font-size: 0.725rem;
-      font-weight: 600;
-      text-transform: uppercase;
-      letter-spacing: 0.05em;
-      color: var(--text-light);
-      margin-bottom: 6px;
-    }}
-    .stat-val {{
-      font-size: 1.6rem;
       font-weight: 700;
-      letter-spacing: -0.02em;
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+      color: var(--text-muted);
+      margin-bottom: 8px;
     }}
-    
-    .status-indicator {{
+    .stat-number {{
+      font-size: 1.85rem;
+      font-weight: 800;
+      letter-spacing: -0.03em;
+      line-height: 1;
+    }}
+    .stat-caption {{
+      font-size: 0.775rem;
+      color: var(--text-muted);
+      margin-top: 8px;
+      font-weight: 500;
+    }}
+
+    .directive-tag {{
       display: inline-flex;
       align-items: center;
       gap: 6px;
-      font-size: 0.825rem;
-      font-weight: 500;
+      font-size: 0.8rem;
+      font-weight: 600;
     }}
-    .status-indicator .dot {{
-      width: 7px;
-      height: 7px;
+    .directive-tag .bullet {{
+      width: 6px;
+      height: 6px;
       border-radius: 50%;
     }}
-    .status-indicator.pass .dot {{ background: #0F766E; }}
-    .status-indicator.warn .dot {{ background: #D97706; }}
+    .directive-tag.pass .bullet {{ background: var(--green); }}
+    .directive-tag.warn .bullet {{ background: var(--amber); }}
 
-    .section-card {{
+    /* Table Panels */
+    .panel-card {{
       background: var(--surface);
       border: 1px solid var(--border);
-      border-radius: var(--radius);
-      margin-bottom: 24px;
-      box-shadow: var(--shadow);
+      border-radius: var(--radius-xl);
+      margin-bottom: 28px;
+      box-shadow: var(--shadow-sm);
       overflow: hidden;
     }}
-    .section-header {{
-      padding: 20px 24px;
+    .panel-header {{
+      padding: 20px 28px;
       border-bottom: 1px solid var(--border-subtle);
       display: flex;
       justify-content: space-between;
       align-items: center;
+      background: #FFFFFF;
     }}
-    h2 {{
-      font-size: 1rem;
-      font-weight: 600;
-      letter-spacing: -0.01em;
+    .panel-title {{
+      font-size: 1.05rem;
+      font-weight: 700;
+      letter-spacing: -0.02em;
     }}
-    .table-wrap {{
+    .table-responsive {{
       overflow-x: auto;
     }}
     table {{
@@ -326,21 +411,31 @@ def generate_html_report(report: SiteAuditReport) -> str:
       text-align: left;
     }}
     th, td {{
-      padding: 12px 18px;
+      padding: 13px 20px;
       border-bottom: 1px solid var(--border-subtle);
       vertical-align: middle;
     }}
     th {{
-      background: #FDFCFC;
-      font-size: 0.7rem;
-      font-weight: 600;
+      background: var(--surface-subtle);
+      font-size: 0.725rem;
+      font-weight: 700;
       text-transform: uppercase;
-      letter-spacing: 0.06em;
-      color: var(--text-light);
+      letter-spacing: 0.05em;
+      color: var(--text-muted);
     }}
     tr:last-child td {{ border-bottom: none; }}
-    tr:hover td {{ background: #FAFAF9; }}
-    
+    tr:hover td {{ background: #F8FAFC; }}
+
+    .mono {{ font-family: 'JetBrains Mono', ui-monospace, monospace; }}
+    .font-sm {{ font-size: 0.875rem; }}
+    .font-xs {{ font-size: 0.8rem; }}
+    .font-xxs {{ font-size: 0.725rem; }}
+    .font-semibold {{ font-weight: 600; }}
+    .font-medium {{ font-weight: 500; }}
+    .text-muted {{ color: var(--text-muted); }}
+    .text-danger {{ color: var(--red); }}
+    .text-center {{ text-align: center; }}
+
     .cell-url {{
       max-width: 280px;
       overflow: hidden;
@@ -348,107 +443,146 @@ def generate_html_report(report: SiteAuditReport) -> str:
       white-space: nowrap;
     }}
     .cell-title {{
-      font-size: 0.825rem;
-      font-weight: 500;
-      max-width: 220px;
+      max-width: 240px;
       overflow: hidden;
       text-overflow: ellipsis;
       white-space: nowrap;
     }}
     .table-link {{
-      color: var(--text);
+      color: var(--ahrefs-blue);
       text-decoration: none;
     }}
     .table-link:hover {{
       text-decoration: underline;
     }}
-    
-    .badge {{
+
+    .status-badge {{
       display: inline-block;
-      padding: 2px 7px;
-      border-radius: 5px;
+      padding: 3px 8px;
+      border-radius: var(--radius-sm);
       border: 1px solid transparent;
+      font-size: 0.75rem;
+      font-weight: 700;
+    }}
+    .status-err {{
+      background: #FEF2F2;
+      border-color: #FECACA;
+      color: #991B1B;
+    }}
+
+    .scope-pill {{
+      display: inline-block;
+      padding: 2px 8px;
+      border-radius: 9999px;
       font-size: 0.725rem;
       font-weight: 600;
-      letter-spacing: -0.01em;
     }}
-    .badge-int {{ background: #F5F5F4; border-color: #E7E5E4; color: #57534E; }}
-    .badge-ext {{ background: #F0F9FF; border-color: #E0F2FE; color: #0284C7; }}
-    .badge-err {{ background: #FEF2F2; border-color: #FEE2E2; color: #DC2626; }}
-    
-    .tags-wrapper {{
+    .scope-int {{ background: #F1F5F9; color: #475569; }}
+    .scope-ext {{ background: #EFF6FF; color: var(--ahrefs-blue); }}
+
+    .tags-flex {{
       display: flex;
       flex-wrap: wrap;
-      gap: 4px;
+      gap: 5px;
     }}
-    .tag {{
+    .tag-pill {{
       display: inline-block;
-      padding: 1px 6px;
+      padding: 2px 7px;
       border-radius: 4px;
-      font-size: 0.7rem;
+      font-size: 0.725rem;
       font-weight: 500;
     }}
-    .tag-ok {{ background: #F0FDF4; color: #16A34A; }}
-    .tag-issue {{ background: #FFFBEB; color: #B45309; border: 1px solid #FEF3C7; }}
+    .tag-ok {{ background: #ECFDF5; color: #065F46; border: 1px solid #A7F3D0; }}
+    .tag-warn {{ background: #FFFBEB; color: #92400E; border: 1px solid #FDE68A; }}
+
     .empty-state {{
       text-align: center;
       padding: 36px;
-      color: #0F766E;
-      font-size: 0.9rem;
-      font-weight: 500;
+      color: var(--green);
+      font-size: 0.925rem;
+      font-weight: 600;
+    }}
+
+    @media (max-width: 900px) {{
+      .report-header-card {{ grid-template-columns: 1fr; }}
+      .stats-grid {{ grid-template-columns: 1fr 1fr; }}
     }}
   </style>
 </head>
 <body>
   <div class="container">
-    <header>
+    <!-- Header Banner Card (Semrush/Ahrefs Light Style) -->
+    <header class="report-header-card">
       <div>
-        <div class="brand-tag">SEO Audit Toolkit</div>
-        <h1>{html.escape(report.target_url)}</h1>
-        <p class="muted font-xs" style="margin-top: 4px;">Audited at {html.escape(report.audited_at)} · Duration {report.duration_seconds}s</p>
+        <div class="eyebrow">SEO Audit Report</div>
+        <h1 class="target-url">{html.escape(report.target_url)}</h1>
+        <div class="meta-bar">
+          <span class="meta-badge"><strong>{len(report.pages)}</strong> Pages Audited</span>
+          <span class="meta-badge"><strong>{report.duration_seconds}s</strong> Crawl Duration</span>
+          <span class="text-muted font-xs">Generated: {html.escape(report.audited_at)}</span>
+        </div>
       </div>
-      <div class="score-badge">
-        <div class="score-num">{report.health_score}/100</div>
-        <div class="score-label">Health Score</div>
+
+      <!-- Radial Circular Health Gauge -->
+      <div class="gauge-box">
+        <div class="circle-gauge">
+          <svg viewBox="0 0 136 136">
+            <circle class="gauge-track" cx="68" cy="68" r="56" />
+            <circle class="gauge-progress" cx="68" cy="68" r="56"
+                    stroke="{score_color}"
+                    stroke-dasharray="{circumference}"
+                    stroke-dashoffset="{dash_offset}" />
+          </svg>
+          <div class="gauge-inner">
+            <div class="gauge-val" style="color: {score_color};">{score}/100</div>
+            <div class="gauge-sub">{score_label}</div>
+          </div>
+        </div>
+        <div class="font-xs text-muted font-semibold" style="margin-top: 8px;">Overall Health Score</div>
       </div>
     </header>
 
-    <div class="grid-stats">
-      <div class="stat-card">
-        <div class="stat-title">Pages Analyzed</div>
-        <div class="stat-val">{len(report.pages)}</div>
+    <!-- 4 Stats Cards Grid -->
+    <div class="stats-grid">
+      <div class="stat-box">
+        <div class="stat-label">Total Pages Crawled</div>
+        <div class="stat-number">{len(report.pages)}</div>
+        <div class="stat-caption">Internal BFS discovery</div>
       </div>
-      <div class="stat-card">
-        <div class="stat-title">Issues Flagged</div>
-        <div class="stat-val" style="color: {'#B91C1C' if total_issues > 0 else 'var(--text)'};">{total_issues}</div>
+      <div class="stat-box">
+        <div class="stat-label">Total Issues Flagged</div>
+        <div class="stat-number" style="color: {'#EF4444' if total_issues > 0 else 'var(--text)'};">{total_issues}</div>
+        <div class="stat-caption">On-page & metadata alerts</div>
       </div>
-      <div class="stat-card">
-        <div class="stat-title">Broken Links</div>
-        <div class="stat-val" style="color: {'#DC2626' if total_broken > 0 else '#0F766E'};">{total_broken}</div>
+      <div class="stat-box">
+        <div class="stat-label">Broken Links (404/5xx)</div>
+        <div class="stat-number" style="color: {'#EF4444' if total_broken > 0 else '#10B981'};">{total_broken}</div>
+        <div class="stat-caption">{'Requires dead link fixes' if total_broken > 0 else 'All links validated safe'}</div>
       </div>
-      <div class="stat-card">
-        <div class="stat-title">Site Meta Directives</div>
+      <div class="stat-box">
+        <div class="stat-label">Directives & Sitemap</div>
         <div style="margin-top: 4px;">robots.txt: {robots_badge}</div>
-        <div style="margin-top: 2px;">sitemap.xml: {sitemap_badge}</div>
+        <div style="margin-top: 4px;">sitemap.xml: {sitemap_badge}</div>
       </div>
     </div>
 
-    <div class="section-card">
-      <div class="section-header">
-        <h2>Internal Pages Audited</h2>
-        <span class="muted font-xs">{len(report.pages)} results</span>
+    <!-- Audited Internal Pages Table -->
+    <div class="panel-card">
+      <div class="panel-header">
+        <div class="panel-title">Audited Internal Pages</div>
+        <div class="text-muted font-xs">{len(report.pages)} pages crawled</div>
       </div>
-      <div class="table-wrap">
+      <div class="table-responsive">
         <table>
           <thead>
             <tr>
-              <th>URL</th>
+              <th>Target URL</th>
               <th>Status</th>
               <th>Latency</th>
-              <th>Title</th>
-              <th class="center">H1</th>
-              <th>Canonical</th>
-              <th>Issues</th>
+              <th>Page Title</th>
+              <th class="text-center">H1</th>
+              <th>Canonical Tag</th>
+              <th>On-Page Findings</th>
             </tr>
           </thead>
           <tbody>
@@ -458,17 +592,18 @@ def generate_html_report(report: SiteAuditReport) -> str:
       </div>
     </div>
 
-    <div class="section-card">
-      <div class="section-header">
-        <h2>Broken Links (404 & Dead URLs)</h2>
-        <span class="muted font-xs">{total_broken} detected</span>
+    <!-- Broken Links Table -->
+    <div class="panel-card">
+      <div class="panel-header">
+        <div class="panel-title">Broken Links (404 & Dead Endpoints)</div>
+        <div class="text-muted font-xs">{total_broken} links detected</div>
       </div>
-      <div class="table-wrap">
+      <div class="table-responsive">
         <table>
           <thead>
             <tr>
               <th>Originating Page</th>
-              <th>Broken Target URL</th>
+              <th>Broken Target Link</th>
               <th>Scope</th>
               <th>Anchor Context</th>
               <th>HTTP Error</th>
