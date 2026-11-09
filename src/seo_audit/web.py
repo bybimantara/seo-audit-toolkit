@@ -503,7 +503,6 @@ async def index():
         <div class="input-bar">
           <input type="url" id="url" name="url" required placeholder="https://example.com" autofocus />
           <button type="submit" id="btnSubmit" class="btn-audit">
-            <span id="btnIcon">⚡</span>
             <span id="btnText">Start Audit</span>
           </button>
         </div>
@@ -534,13 +533,11 @@ async def index():
     const form = document.getElementById("auditForm");
     const btn = document.getElementById("btnSubmit");
     const btnText = document.getElementById("btnText");
-    const btnIcon = document.getElementById("btnIcon");
     const statusArea = document.getElementById("statusArea");
 
     form.addEventListener("submit", async (e) => {
       e.preventDefault();
       btn.disabled = true;
-      btnIcon.innerText = "⏳";
       btnText.innerText = "Crawling Website...";
       statusArea.style.display = "block";
 
@@ -667,7 +664,6 @@ async def index():
         `;
       } finally {
         btn.disabled = false;
-        btnIcon.innerText = "⚡";
         btnText.innerText = "Start Audit";
       }
     });
