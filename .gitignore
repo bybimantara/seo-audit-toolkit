@@ -1,0 +1,34 @@
+# Vibecoding markdown & agent rules (hanya README.md yang di-commit)
+*.md
+!README.md
+docs/
+.cursor/
+.github/copilot-instructions.md
+
+# Secrets & env
+.env
+.env.*
+!.env.example
+
+# Dependencies
+node_modules/
+.venv/
+venv/
+vendor/
+
+# Build & cache
+dist/
+build/
+out/
+.next/
+target/
+__pycache__/
+*.pyc
+.cache/
+coverage/
+
+# OS / editor
+.DS_Store
+Thumbs.db
+.idea/
+*.log
