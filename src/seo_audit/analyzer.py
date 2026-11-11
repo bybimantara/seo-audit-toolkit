@@ -2,13 +2,160 @@
 
 from __future__ import annotations
 
+import json
 import re
 import xml.etree.ElementTree as ET
 from urllib.parse import urldefrag, urljoin, urlparse
 
 from bs4 import BeautifulSoup
 
-from seo_audit.models import PageAudit
+from seo_audit.models import ImageIssue, PageAudit, SocialMeta
+
+
+def extract_social_meta(soup: BeautifulSoup) -> SocialMeta:
+    """Extract OpenGraph and Twitter card metadata."""
+    og_title = ""
+    og_description = ""
+    og_image = ""
+    og_url = ""
+    twitter_card = ""
+    issues: list[str] = []
+
+    for tag in soup.find_all("meta"):
+        prop = tag.get("property", "").strip().lower()
+        name = tag.get("name", "").strip().lower()
+        content = tag.get("content", "").strip()
+
+        if prop == "og:title":
+            og_title = content
+        elif prop == "og:description":
+            og_description = content
+        elif prop == "og:image":
+            og_image = content
+        elif prop == "og:url":
+            og_url = content
+        elif name == "twitter:card":
+            twitter_card = content
+
+    if not og_title:
+        issues.append("Missing og:title")
+    if not og_description:
+        issues.append("Missing og:description")
+    if not og_image:
+        issues.append("Missing og:image")
+
+    return SocialMeta(
+        og_title=og_title,
+        og_description=og_description,
+        og_image=og_image,
+        og_url=og_url,
+        twitter_card=twitter_card,
+        issues=issues,
+    )
+
+
+def audit_images(soup: BeautifulSoup, base_url: str) -> list[ImageIssue]:
+    """Audit <img> tags for missing alt text and dimensions."""
+    issues: list[ImageIssue] = []
+    for img in soup.find_all("img"):
+        src = img.get("src", "").strip()
+        if not src:
+            continue
+
+        resolved_src = normalize_url(src, base_url) or src
+        alt = img.get("alt")
+        has_alt = alt is not None and bool(alt.strip())
+
+        has_width = bool(img.get("width"))
+        has_height = bool(img.get("height"))
+        missing_dimensions = not (has_width and has_height)
+
+        if not has_alt or missing_dimensions:
+            issues.append(
+                ImageIssue(
+                    src=resolved_src,
+                    missing_alt=not has_alt,
+                    missing_dimensions=missing_dimensions,
+                )
+            )
+    return issues
+
+
+def check_heading_hierarchy(soup: BeautifulSoup) -> list[str]:
+    """Validate heading hierarchy so headings don't skip levels (e.g. H1 -> H3)."""
+    issues: list[str] = []
+    heading_tags = soup.find_all(["h1", "h2", "h3", "h4", "h5", "h6"])
+
+    prev_level = 0
+    for tag in heading_tags:
+        level = int(tag.name[1])
+        # If heading jumps down by more than 1 level (e.g. 1 -> 3 or 2 -> 4)
+        if prev_level > 0 and level > prev_level + 1:
+            issues.append(f"Heading level skipped from H{prev_level} to H{level}")
+        prev_level = level
+
+    return issues
+
+
+def check_json_ld(soup: BeautifulSoup) -> tuple[bool, bool]:
+    """Check for presence of JSON-LD scripts and validate JSON syntax."""
+    json_ld_tags = soup.find_all("script", attrs={"type": "application/ld+json"})
+    if not json_ld_tags:
+        return False, False
+
+    all_valid = True
+    for tag in json_ld_tags:
+        content = tag.string or tag.get_text() or ""
+        content = content.strip()
+        if not content:
+            all_valid = False
+            continue
+        try:
+            json.loads(content)
+        except Exception:
+            all_valid = False
+
+    return True, all_valid
+
+
+def parse_ai_bot_rules(robots_txt: str) -> dict[str, str]:
+    """Parse robots.txt to determine directives for AI bots (GPTBot, ClaudeBot, PerplexityBot, etc.)."""
+    common_ai_bots = ["gptbot", "claudebot", "perplexitybot", "ccbot", "bytespider"]
+    rules: dict[str, str] = {}
+
+    current_agents: list[str] = []
+    for line in robots_txt.splitlines():
+        line = line.strip()
+        if not line or line.startswith("#"):
+            continue
+        if ":" in line:
+            key, val = line.split(":", 1)
+            key = key.strip().lower()
+            val = val.strip().lower()
+
+            if key == "user-agent":
+                current_agents = [val] if val else []
+            elif key == "disallow":
+                for agent in current_agents:
+                    for bot in common_ai_bots:
+                        if agent == bot or agent == "*":
+                            # if disallowed root path '/'
+                            if val == "/" or val == "/*":
+                                rules[bot.capitalize()] = "disallowed"
+            elif key == "allow":
+                for agent in current_agents:
+                    for bot in common_ai_bots:
+                        if agent == bot:
+                            if val == "/":
+                                rules[bot.capitalize()] = "allowed"
+
+    # Default unspecified bots to 'allowed' if not explicitly disallowed
+    for bot in common_ai_bots:
+        name = bot.capitalize()
+        if name not in rules:
+            rules[name] = "allowed"
+
+    return rules
 
 
 def normalize_domain(netloc: str) -> str:
@@ -133,6 +280,21 @@ def analyze_page_html(
     if not h2_list:
         issues.append("Missing H2 tag")
 
+    # Extended Rules: Heading hierarchy, Social Meta, Images, JSON-LD
+    hierarchy_issues = check_heading_hierarchy(soup)
+    issues.extend(hierarchy_issues)
+
+    social_meta = extract_social_meta(soup)
+
+    image_issues = audit_images(soup, effective_url)
+    missing_alt_count = sum(1 for img in image_issues if img.missing_alt)
+    if missing_alt_count > 0:
+        issues.append(f"{missing_alt_count} image(s) missing alt text")
+
+    has_json_ld, json_ld_valid = check_json_ld(soup)
+    if has_json_ld and not json_ld_valid:
+        issues.append("Invalid JSON-LD structured data syntax")
+
     # Links extraction
     internal_links: list[tuple[str, str]] = []
     external_links: list[tuple[str, str]] = []
@@ -173,6 +335,11 @@ def analyze_page_html(
         internal_links_count=len(internal_links),
         external_links_count=len(external_links),
         broken_links=[],
+        social_meta=social_meta,
+        image_issues=image_issues,
+        heading_hierarchy_issues=hierarchy_issues,
+        has_json_ld=has_json_ld,
+        json_ld_valid=json_ld_valid,
         issues=issues,
         page_score=page_score,
     )

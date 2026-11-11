@@ -8,8 +8,37 @@ from datetime import UTC, datetime
 
 
 @dataclass
+class SocialMeta:
+    """OpenGraph and Twitter Card metadata."""
+
+    og_title: str = ""
+    og_description: str = ""
+    og_image: str = ""
+    og_url: str = ""
+    twitter_card: str = ""
+    issues: list[str] = field(default_factory=list)
+
+
+@dataclass
+class ImageIssue:
+    """Details of an image lacking alt text or dimensions."""
+
+    src: str
+    missing_alt: bool = False
+    missing_dimensions: bool = False
+
+
+@dataclass
+class RedirectHop:
+    """Details of an intermediate HTTP redirect hop."""
+
+    url: str
+    status_code: int
+
+
+@dataclass
 class SiteMetaResult:
-    """Status of robots.txt and sitemap.xml."""
+    """Status of robots.txt and sitemap.xml, plus AI readiness."""
 
     robots_url: str = ""
     robots_status: int | None = None
@@ -21,6 +50,9 @@ class SiteMetaResult:
     sitemap_valid_xml: bool = False
     sitemap_is_index: bool = False
     sitemap_url_count: int = 0
+    llms_txt_url: str = ""
+    llms_txt_found: bool = False
+    ai_bot_rules: dict[str, str] = field(default_factory=dict)
     issues: list[str] = field(default_factory=list)
 
 
@@ -58,6 +90,12 @@ class PageAudit:
     internal_links_count: int = 0
     external_links_count: int = 0
     broken_links: list[BrokenLink] = field(default_factory=list)
+    social_meta: SocialMeta = field(default_factory=SocialMeta)
+    image_issues: list[ImageIssue] = field(default_factory=list)
+    heading_hierarchy_issues: list[str] = field(default_factory=list)
+    has_json_ld: bool = False
+    json_ld_valid: bool = False
+    redirect_chain: list[RedirectHop] = field(default_factory=list)
     issues: list[str] = field(default_factory=list)
     page_score: int = 100
 

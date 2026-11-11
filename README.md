@@ -17,10 +17,36 @@ Toolkit komprehensif untuk menganalisis, mengaudit, dan mengoptimalkan SEO situs
 
 ```text
 seo-audit-toolkit/
+├── src/seo_audit/        # Core engine (analyzer, crawler, models, reporters, web, cli)
+├── tests/                # Automated unit & integration tests
+├── docs/                 # Dokumentasi internal (PRD, contract, plan, progress, dll.)
 ├── .env.example          # Template konfigurasi environment (tanpa secret)
 ├── .gitignore            # Pengecualian berkas Git & dokumen internal agent
 ├── LICENSE               # Lisensi proyek
+├── pyproject.toml        # Konfigurasi package, tool uv & pytest
 └── README.md             # Dokumentasi utama proyek
+```
+
+---
+
+## ⚡ Cara Menjalankan
+
+### 1. Audit via CLI
+Jalankan audit langsung ke target URL dari terminal:
+```bash
+uv run seo-audit https://example.com --max-pages 50 --csv report.csv --html report.html
+```
+
+### 2. Jalankan Web Dashboard
+Jalankan web server lokal untuk audit interaktif melalui browser:
+```bash
+uv run seo-audit serve --reload
+```
+Buka browser di `http://127.0.0.1:8000`.
+
+### 3. Menjalankan Pengujian (Testing)
+```bash
+uv run pytest
 ```
 
 ---

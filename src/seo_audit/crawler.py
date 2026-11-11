@@ -14,10 +14,17 @@ import httpx
 from seo_audit.analyzer import (
     analyze_page_html,
     is_same_site,
+    parse_ai_bot_rules,
     parse_robots_txt,
     parse_sitemap_xml,
 )
-from seo_audit.models import BrokenLink, PageAudit, SiteAuditReport, SiteMetaResult
+from seo_audit.models import (
+    BrokenLink,
+    PageAudit,
+    RedirectHop,
+    SiteAuditReport,
+    SiteMetaResult,
+)
 
 DEFAULT_USER_AGENT = "SEOAuditToolkit/0.1 (+https://github.com/bybimantara/seo-audit-toolkit)"
 
@@ -116,11 +123,22 @@ async def check_site_meta(
             result.robots_found = True
             sitemaps, issues = parse_robots_txt(r_resp.text, robots_url)
             result.sitemaps_in_robots = sitemaps
+            result.ai_bot_rules = parse_ai_bot_rules(r_resp.text)
             result.issues.extend(issues)
         else:
             result.issues.append(f"robots.txt returned HTTP {r_resp.status_code}")
     except (httpx.RequestError, OSError) as err:
         result.issues.append(f"Failed to fetch robots.txt ({err.__class__.__name__})")
+
+    # 1.5 Check /llms.txt (AI Readiness)
+    llms_url = f"{origin}/llms.txt"
+    result.llms_txt_url = llms_url
+    try:
+        l_resp = await client.get(llms_url, timeout=5.0, follow_redirects=True)
+        if l_resp.status_code == 200:
+            result.llms_txt_found = True
+    except (httpx.RequestError, OSError):
+        result.llms_txt_found = False
 
     # 2. Determine and check sitemap.xml
     candidate_sitemap = (
@@ -221,6 +239,7 @@ async def crawl_site(
             final_url = current_url
             html_text = ""
             content_type = ""
+            redirect_chain: list[RedirectHop] = []
 
             try:
                 async with semaphore:
@@ -238,6 +257,12 @@ async def crawl_site(
                         final_url = str(resp_final.url)
                         html_text = resp_final.text
                         content_type = resp_final.headers.get("content-type", "")
+
+                        # Capture redirect history
+                        for hop in resp_final.history:
+                            redirect_chain.append(
+                                RedirectHop(url=str(hop.url), status_code=hop.status_code)
+                            )
                     else:
                         final_status = initial_status
                         final_url = str(resp_initial.url)
@@ -260,6 +285,11 @@ async def crawl_site(
                     response_time_ms=duration_ms,
                     content_type=content_type,
                 )
+                audit.redirect_chain = redirect_chain
+                if len(redirect_chain) > 2:
+                    audit.issues.append(
+                        f"Redirect chain too long ({len(redirect_chain)} hops)"
+                    )
                 # Enqueue new internal links found
                 for link_url, _ in audit.internal_links:
                     if (

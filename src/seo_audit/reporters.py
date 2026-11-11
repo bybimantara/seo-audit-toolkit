@@ -33,6 +33,11 @@ def generate_csv_report(report: SiteAuditReport) -> str:
             "External Links Count",
             "Broken Links Count",
             "Broken Links Detail",
+            "OG Title",
+            "Images Missing Alt Count",
+            "Heading Hierarchy Issues",
+            "JSON-LD Valid",
+            "Redirect Hops Count",
             "SEO Issues",
         ]
     )
@@ -45,6 +50,8 @@ def generate_csv_report(report: SiteAuditReport) -> str:
             for bl in page.broken_links
         )
         issues_str = " | ".join(page.issues)
+        missing_alt = sum(1 for img in page.image_issues if img.missing_alt)
+        hierarchy_str = " | ".join(page.heading_hierarchy_issues)
 
         writer.writerow(
             [
@@ -64,6 +71,11 @@ def generate_csv_report(report: SiteAuditReport) -> str:
                 page.external_links_count,
                 len(page.broken_links),
                 broken_str,
+                page.social_meta.og_title if page.social_meta else "",
+                missing_alt,
+                hierarchy_str,
+                "YES" if (page.has_json_ld and page.json_ld_valid) else "NO",
+                len(page.redirect_chain),
                 issues_str,
             ]
         )
@@ -91,6 +103,14 @@ def generate_html_report(report: SiteAuditReport) -> str:
 
     total_issues = sum(len(p.issues) for p in report.pages)
     total_broken = len(report.broken_links)
+    total_missing_alt = sum(
+        sum(1 for img in p.image_issues if img.missing_alt) for p in report.pages
+    )
+    llms_badge = (
+        '<span class="directive-tag pass"><span class="bullet"></span>Found (/llms.txt)</span>'
+        if report.site_meta.llms_txt_found
+        else '<span class="directive-tag warn"><span class="bullet"></span>Missing (/llms.txt)</span>'
+    )
 
     # Circumference calculation for gauge (r=56) -> 2 * PI * 56 ~= 351.85
     circumference = 351.85
@@ -552,7 +572,7 @@ def generate_html_report(report: SiteAuditReport) -> str:
       <div class="stat-box">
         <div class="stat-label">Total Issues Flagged</div>
         <div class="stat-number" style="color: {'#EF4444' if total_issues > 0 else 'var(--text)'};">{total_issues}</div>
-        <div class="stat-caption">On-page & metadata alerts</div>
+        <div class="stat-caption">Alt, OG, Meta, & Heading alerts</div>
       </div>
       <div class="stat-box">
         <div class="stat-label">Broken Links (404/5xx)</div>
@@ -560,9 +580,10 @@ def generate_html_report(report: SiteAuditReport) -> str:
         <div class="stat-caption">{'Requires dead link fixes' if total_broken > 0 else 'All links validated safe'}</div>
       </div>
       <div class="stat-box">
-        <div class="stat-label">Directives & Sitemap</div>
+        <div class="stat-label">AI & Search Directives</div>
         <div style="margin-top: 4px;">robots.txt: {robots_badge}</div>
         <div style="margin-top: 4px;">sitemap.xml: {sitemap_badge}</div>
+        <div style="margin-top: 4px;">AI llms.txt: {llms_badge}</div>
       </div>
     </div>
 

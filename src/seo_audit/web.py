@@ -708,6 +708,7 @@ async def run_audit(req: AuditRequest, request: Request):
         "pages_crawled": len(report.pages),
         "broken_links_count": len(report.broken_links),
         "duration_seconds": report.duration_seconds,
+        "llms_txt_found": report.site_meta.llms_txt_found,
     }
 
 
