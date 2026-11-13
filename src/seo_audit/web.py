@@ -453,6 +453,34 @@ async def index():
       margin-top: 8px;
     }
 
+    /* Category & Severity Boxes */
+    .cat-pill-grid {
+      display: grid;
+      grid-template-columns: repeat(5, 1fr);
+      gap: 12px;
+      margin-top: 14px;
+    }
+    .cat-pill-box {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-md);
+      padding: 14px 16px;
+      text-align: center;
+      box-shadow: var(--shadow-sm);
+    }
+    .cat-box-title {
+      font-size: 0.675rem;
+      font-weight: 800;
+      letter-spacing: 0.06em;
+      color: var(--text-muted);
+      margin-bottom: 4px;
+    }
+    .cat-box-num {
+      font-size: 1.05rem;
+      font-weight: 700;
+      color: var(--text);
+    }
+
     /* History & Diff Panels */
     .history-card {
       background: var(--surface);
@@ -618,9 +646,12 @@ async def index():
       .metrics-grid-4, .diff-stat-grid {
         grid-template-columns: 1fr 1fr;
       }
+      .cat-pill-grid {
+        grid-template-columns: repeat(3, 1fr);
+      }
     }
     @media (max-width: 520px) {
-      .metrics-grid-4, .diff-stat-grid {
+      .metrics-grid-4, .diff-stat-grid, .cat-pill-grid {
         grid-template-columns: 1fr;
       }
       .input-bar {
@@ -998,6 +1029,53 @@ async def index():
                 <div class="card-footer" style="color: var(--text-muted);">HTML & CSV generated</div>
               </div>
             </div>
+
+            <!-- Category & Severity Breakdown Panel -->
+            <div style="margin-top: 28px;">
+              <div class="section-title">Issue Breakdown by Category & Severity</div>
+              <div class="section-desc">Prioritized triage across critical crawl errors, on-page tags, images, and directives</div>
+
+              <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 14px; margin-bottom: 20px;">
+                <div class="metric-card" style="border-left: 4px solid #EF4444;">
+                  <div class="card-title">Critical Errors</div>
+                  <div class="card-number" style="color: ${data.severity_counts.critical > 0 ? '#EF4444' : '#10B981'};">${data.severity_counts.critical}</div>
+                  <div class="card-footer" style="color: var(--text-muted);">High priority fixes</div>
+                </div>
+                <div class="metric-card" style="border-left: 4px solid #F59E0B;">
+                  <div class="card-title">Warnings</div>
+                  <div class="card-number" style="color: #92400E;">${data.severity_counts.warning}</div>
+                  <div class="card-footer" style="color: var(--text-muted);">Optimization recommendations</div>
+                </div>
+                <div class="metric-card" style="border-left: 4px solid #64748B;">
+                  <div class="card-title">Notices</div>
+                  <div class="card-number" style="color: #334155;">${data.severity_counts.notice}</div>
+                  <div class="card-footer" style="color: var(--text-muted);">Informational advisories</div>
+                </div>
+              </div>
+
+              <div class="cat-pill-grid">
+                <div class="cat-pill-box">
+                  <div class="cat-box-title">CRAWLABILITY</div>
+                  <div class="cat-box-num">${data.category_counts.crawlability} issues</div>
+                </div>
+                <div class="cat-pill-box">
+                  <div class="cat-box-title">ON-PAGE</div>
+                  <div class="cat-box-num">${data.category_counts.on_page} issues</div>
+                </div>
+                <div class="cat-pill-box">
+                  <div class="cat-box-title">IMAGES</div>
+                  <div class="cat-box-num">${data.category_counts.images} issues</div>
+                </div>
+                <div class="cat-pill-box">
+                  <div class="cat-box-title">SOCIAL / SCHEMA</div>
+                  <div class="cat-box-num">${data.category_counts.social} issues</div>
+                </div>
+                <div class="cat-pill-box">
+                  <div class="cat-box-title">DIRECTIVES</div>
+                  <div class="cat-box-num">${data.category_counts.directives} issues</div>
+                </div>
+              </div>
+            </div>
           </div>
         `;
 
@@ -1063,6 +1141,8 @@ async def run_audit(req: AuditRequest, request: Request):
         "broken_links_count": len(report.broken_links),
         "duration_seconds": report.duration_seconds,
         "llms_txt_found": report.site_meta.llms_txt_found,
+        "severity_counts": report.issue_counts_by_severity,
+        "category_counts": report.issue_counts_by_category,
     }
 
 

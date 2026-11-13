@@ -6,7 +6,7 @@ import csv
 import html
 import io
 
-from seo_audit.models import SiteAuditReport
+from seo_audit.models import SiteAuditReport, classify_issue
 
 
 def generate_csv_report(report: SiteAuditReport) -> str:
@@ -112,6 +112,9 @@ def generate_html_report(report: SiteAuditReport) -> str:
         else '<span class="directive-tag warn"><span class="bullet"></span>Missing (/llms.txt)</span>'
     )
 
+    sev_counts = report.issue_counts_by_severity
+    cat_counts = report.issue_counts_by_category
+
     # Circumference calculation for gauge (r=56) -> 2 * PI * 56 ~= 351.85
     circumference = 351.85
     dash_offset = circumference - (score / 100) * circumference
@@ -142,18 +145,33 @@ def generate_html_report(report: SiteAuditReport) -> str:
         )
         status_text = str(p.status_code) if p.status_code else "ERR"
 
-        issues_html = (
-            "".join(
-                f'<span class="tag-pill tag-warn">{html.escape(i)}</span>'
-                for i in p.issues
+        page_categories = set()
+        page_severities = set()
+        issues_badges = []
+        for i in p.issues:
+            sev, cat = classify_issue(i)
+            page_categories.add(cat)
+            page_severities.add(sev)
+            issues_badges.append(
+                f'<span class="tag-pill tag-{sev}">{html.escape(i)}</span>'
             )
-            if p.issues
+
+        if p.status_code and p.status_code >= 400:
+            page_severities.add("critical")
+            page_categories.add("crawlability")
+
+        issues_html = (
+            "".join(issues_badges)
+            if issues_badges
             else '<span class="tag-pill tag-ok">✓ Healthy</span>'
         )
 
+        cat_attr = " ".join(sorted(page_categories)) or "healthy"
+        sev_attr = " ".join(sorted(page_severities)) or "healthy"
+
         pages_rows.append(
             f"""
-            <tr>
+            <tr class="page-row" data-categories="{cat_attr}" data-severities="{sev_attr}">
               <td class="mono font-xs cell-url">
                 <a href="{html.escape(p.url)}" target="_blank" class="table-link font-medium">{html.escape(p.url)}</a>
               </td>
@@ -514,6 +532,90 @@ def generate_html_report(report: SiteAuditReport) -> str:
     }}
     .tag-ok {{ background: #ECFDF5; color: #065F46; border: 1px solid #A7F3D0; }}
     .tag-warn {{ background: #FFFBEB; color: #92400E; border: 1px solid #FDE68A; }}
+    .tag-critical {{ background: #FEF2F2; color: #991B1B; border: 1px solid #FECACA; }}
+    .tag-warning {{ background: #FFFBEB; color: #92400E; border: 1px solid #FDE68A; }}
+    .tag-notice {{ background: #F1F5F9; color: #334155; border: 1px solid #CBD5E1; }}
+
+    /* Category Tabs and Filter Controls */
+    .filter-bar {{
+      padding: 12px 24px;
+      background: var(--surface);
+      border-bottom: 1px solid var(--border-subtle);
+      display: flex;
+      flex-wrap: wrap;
+      justify-content: space-between;
+      align-items: center;
+      gap: 12px;
+    }}
+    .tabs-group {{
+      display: flex;
+      flex-wrap: wrap;
+      gap: 4px;
+    }}
+    .tab-btn {{
+      padding: 6px 12px;
+      font-size: 0.775rem;
+      font-weight: 600;
+      border-radius: var(--radius-sm);
+      border: 1px solid transparent;
+      background: transparent;
+      color: var(--text-muted);
+      cursor: pointer;
+      font-family: inherit;
+      transition: all 0.15s ease;
+    }}
+    .tab-btn:hover {{
+      color: var(--text);
+      background: var(--surface-subtle);
+    }}
+    .tab-btn.active {{
+      background: #EFF6FF;
+      border-color: #BFDBFE;
+      color: var(--ahrefs-blue);
+      font-weight: 700;
+    }}
+    .severity-group {{
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }}
+    .sev-pill-btn {{
+      padding: 4px 10px;
+      font-size: 0.725rem;
+      font-weight: 600;
+      border-radius: 20px;
+      border: 1px solid var(--border);
+      background: var(--surface);
+      color: var(--text-muted);
+      cursor: pointer;
+      font-family: inherit;
+      transition: all 0.15s ease;
+    }}
+    .sev-pill-btn:hover {{
+      border-color: var(--text-muted);
+      color: var(--text);
+    }}
+    .sev-pill-btn.active {{
+      font-weight: 700;
+      border-color: var(--text);
+      color: var(--text);
+      background: var(--surface-subtle);
+    }}
+    .sev-pill-btn.sev-crit.active {{
+      background: #FEF2F2;
+      border-color: #FECACA;
+      color: #991B1B;
+    }}
+    .sev-pill-btn.sev-warn.active {{
+      background: #FFFBEB;
+      border-color: #FDE68A;
+      color: #92400E;
+    }}
+    .sev-pill-btn.sev-info.active {{
+      background: #F1F5F9;
+      border-color: #CBD5E1;
+      color: #334155;
+    }}
 
     .empty-state {{
       text-align: center;
@@ -593,6 +695,23 @@ def generate_html_report(report: SiteAuditReport) -> str:
         <div class="panel-title">Audited Internal Pages</div>
         <div class="text-muted font-xs">{len(report.pages)} pages crawled</div>
       </div>
+      <div class="filter-bar">
+        <div class="tabs-group">
+          <button class="tab-btn active" data-cat="all">All Pages ({len(report.pages)})</button>
+          <button class="tab-btn" data-cat="crawlability">Crawlability ({cat_counts['crawlability']})</button>
+          <button class="tab-btn" data-cat="on_page">On-Page ({cat_counts['on_page']})</button>
+          <button class="tab-btn" data-cat="images">Images ({cat_counts['images']})</button>
+          <button class="tab-btn" data-cat="social">Social & Schema ({cat_counts['social']})</button>
+          <button class="tab-btn" data-cat="directives">Directives ({cat_counts['directives']})</button>
+        </div>
+        <div class="severity-group">
+          <span style="font-size: 0.725rem; font-weight: 700; color: var(--text-muted); text-transform: uppercase;">Severity:</span>
+          <button class="sev-pill-btn active" data-sev="all">All</button>
+          <button class="sev-pill-btn sev-crit" data-sev="critical">Critical ({sev_counts['critical']})</button>
+          <button class="sev-pill-btn sev-warn" data-sev="warning">Warning ({sev_counts['warning']})</button>
+          <button class="sev-pill-btn sev-info" data-sev="notice">Notice ({sev_counts['notice']})</button>
+        </div>
+      </div>
       <div class="table-responsive">
         <table>
           <thead>
@@ -608,6 +727,9 @@ def generate_html_report(report: SiteAuditReport) -> str:
           </thead>
           <tbody>
             {"".join(pages_rows)}
+            <tr id="noMatchesRow" style="display: none;">
+              <td colspan="7" class="empty-state">No pages match the active category and severity filters.</td>
+            </tr>
           </tbody>
         </table>
       </div>
@@ -637,6 +759,53 @@ def generate_html_report(report: SiteAuditReport) -> str:
       </div>
     </div>
   </div>
+
+  <script>
+    let activeCat = 'all';
+    let activeSev = 'all';
+
+    function applyFilters() {{
+      const rows = document.querySelectorAll('.page-row');
+      let visible = 0;
+      rows.forEach(r => {{
+        const cats = (r.getAttribute('data-categories') || '').split(' ');
+        const sevs = (r.getAttribute('data-severities') || '').split(' ');
+
+        const matchCat = (activeCat === 'all') || cats.includes(activeCat);
+        const matchSev = (activeSev === 'all') || sevs.includes(activeSev);
+
+        if (matchCat && matchSev) {{
+          r.style.display = '';
+          visible++;
+        }} else {{
+          r.style.display = 'none';
+        }}
+      }});
+
+      const noMatch = document.getElementById('noMatchesRow');
+      if (noMatch) {{
+        noMatch.style.display = visible === 0 ? '' : 'none';
+      }}
+    }}
+
+    document.querySelectorAll('.tab-btn').forEach(btn => {{
+      btn.addEventListener('click', () => {{
+        document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+        btn.classList.add('active');
+        activeCat = btn.getAttribute('data-cat');
+        applyFilters();
+      }});
+    }});
+
+    document.querySelectorAll('.sev-pill-btn').forEach(btn => {{
+      btn.addEventListener('click', () => {{
+        document.querySelectorAll('.sev-pill-btn').forEach(b => b.classList.remove('active'));
+        btn.classList.add('active');
+        activeSev = btn.getAttribute('data-sev');
+        applyFilters();
+      }});
+    }});
+  </script>
 </body>
 </html>
 """

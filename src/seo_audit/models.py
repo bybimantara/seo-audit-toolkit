@@ -6,7 +6,98 @@ import json
 import uuid
 from dataclasses import asdict, dataclass, field
 from datetime import UTC, datetime
+from enum import Enum
 from typing import Any
+
+
+class IssueSeverity(str, Enum):
+    CRITICAL = "critical"
+    WARNING = "warning"
+    NOTICE = "notice"
+
+
+class IssueCategory(str, Enum):
+    ALL = "all"
+    CRAWLABILITY = "crawlability"
+    ON_PAGE = "on_page"
+    IMAGES = "images"
+    SOCIAL = "social"
+    DIRECTIVES = "directives"
+
+
+def classify_issue(issue_str: str) -> tuple[str, str]:
+    """Classify an issue string into (severity, category).
+
+    Returns:
+        tuple[str, str]: (severity, category) matching IssueSeverity and IssueCategory values.
+    """
+    msg = issue_str.lower()
+
+    # Critical issues
+    if any(
+        k in msg
+        for k in [
+            "missing title tag",
+            "missing h1",
+            "multiple h1",
+            "redirect loop",
+            "http 404",
+            "http 500",
+            "broken link",
+            "disallowed from root",
+        ]
+    ):
+        if any(
+            k in msg
+            for k in ["http 404", "http 500", "broken link", "redirect loop"]
+        ):
+            return IssueSeverity.CRITICAL.value, IssueCategory.CRAWLABILITY.value
+        if "disallowed from root" in msg:
+            return IssueSeverity.CRITICAL.value, IssueCategory.DIRECTIVES.value
+        return IssueSeverity.CRITICAL.value, IssueCategory.ON_PAGE.value
+
+    # Social & Schema category (checked before Images so 'og:image' is recognized as social)
+    if any(
+        k in msg
+        for k in ["open graph", "og:", "twitter card", "json-ld", "schema"]
+    ):
+        if "invalid json-ld" in msg:
+            return IssueSeverity.WARNING.value, IssueCategory.SOCIAL.value
+        return IssueSeverity.NOTICE.value, IssueCategory.SOCIAL.value
+
+    # Images category
+    if any(k in msg for k in ["image", "alt text", "width or height"]):
+        if "width or height" in msg:
+            return IssueSeverity.NOTICE.value, IssueCategory.IMAGES.value
+        return IssueSeverity.WARNING.value, IssueCategory.IMAGES.value
+
+    # Directives category
+    if any(k in msg for k in ["robots.txt", "sitemap.xml", "llms.txt", "bot"]):
+        if "llms.txt" in msg:
+            return IssueSeverity.NOTICE.value, IssueCategory.DIRECTIVES.value
+        return IssueSeverity.WARNING.value, IssueCategory.DIRECTIVES.value
+
+    # Crawlability category
+    if any(
+        k in msg
+        for k in [
+            "redirect",
+            "status",
+            "latency",
+            "timeout",
+            "connecterror",
+            "slow response",
+        ]
+    ):
+        return IssueSeverity.WARNING.value, IssueCategory.CRAWLABILITY.value
+
+    # On-Page notices
+    if any(k in msg for k in ["missing h2", "heading level skipped"]):
+        if "heading level skipped" in msg:
+            return IssueSeverity.WARNING.value, IssueCategory.ON_PAGE.value
+        return IssueSeverity.NOTICE.value, IssueCategory.ON_PAGE.value
+
+    return IssueSeverity.WARNING.value, IssueCategory.ON_PAGE.value
 
 
 @dataclass
@@ -217,6 +308,33 @@ class SiteAuditReport:
     site_meta: SiteMetaResult = field(default_factory=SiteMetaResult)
     pages: list[PageAudit] = field(default_factory=list)
     broken_links: list[BrokenLink] = field(default_factory=list)
+
+    @property
+    def issue_counts_by_severity(self) -> dict[str, int]:
+        """Aggregate total count of issues across all pages grouped by severity."""
+        counts = {"critical": 0, "warning": 0, "notice": 0}
+        counts["critical"] += len(self.broken_links)
+        for page in self.pages:
+            for issue in page.issues:
+                sev, _ = classify_issue(issue)
+                counts[sev] = counts.get(sev, 0) + 1
+        return counts
+
+    @property
+    def issue_counts_by_category(self) -> dict[str, int]:
+        """Aggregate total count of issues across all pages grouped by category."""
+        counts = {
+            "crawlability": len(self.broken_links),
+            "on_page": 0,
+            "images": 0,
+            "social": 0,
+            "directives": 0,
+        }
+        for page in self.pages:
+            for issue in page.issues:
+                _, cat = classify_issue(issue)
+                counts[cat] = counts.get(cat, 0) + 1
+        return counts
 
     def to_dict(self) -> dict[str, Any]:
         """Convert report to serializable dictionary."""
