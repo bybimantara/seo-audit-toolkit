@@ -23,14 +23,21 @@ def get_default_db_path() -> Path:
     return base_dir / "history.db"
 
 
+_INITIALIZED_DBS: set[str] = set()
+
+
 def get_connection(db_path: str | Path | None = None) -> sqlite3.Connection:
-    """Create and return a configured SQLite connection with tables initialized."""
+    """Create and return a configured SQLite connection with WAL mode and tables initialized."""
     target_path = Path(db_path) if db_path is not None else get_default_db_path()
     target_path.parent.mkdir(parents=True, exist_ok=True)
 
     conn = sqlite3.connect(str(target_path))
     conn.row_factory = sqlite3.Row
-    init_db(conn)
+    conn.execute("PRAGMA journal_mode=WAL;")
+    db_key = str(target_path.resolve())
+    if db_key not in _INITIALIZED_DBS:
+        init_db(conn)
+        _INITIALIZED_DBS.add(db_key)
     return conn
 
 

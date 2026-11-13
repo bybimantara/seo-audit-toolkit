@@ -53,30 +53,38 @@ def generate_csv_report(report: SiteAuditReport) -> str:
         missing_alt = sum(1 for img in page.image_issues if img.missing_alt)
         hierarchy_str = " | ".join(page.heading_hierarchy_issues)
 
+        def _safe_csv_cell(val: object) -> object:
+            if isinstance(val, str) and val and val[0] in ("=", "+", "-", "@", "\t", "\r"):
+                return f"'{val}"
+            return val
+
         writer.writerow(
             [
-                page.url,
-                page.status_code if page.status_code is not None else "ERROR",
-                round(page.response_time_ms, 1),
-                page.title,
-                page.title_length,
-                page.meta_description,
-                page.description_length,
-                len(page.h1_list),
-                h1_str,
-                len(page.h2_list),
-                h2_str,
-                page.canonical_url,
-                page.internal_links_count,
-                page.external_links_count,
-                len(page.broken_links),
-                broken_str,
-                page.social_meta.og_title if page.social_meta else "",
-                missing_alt,
-                hierarchy_str,
-                "YES" if (page.has_json_ld and page.json_ld_valid) else "NO",
-                len(page.redirect_chain),
-                issues_str,
+                _safe_csv_cell(c)
+                for c in [
+                    page.url,
+                    page.status_code if page.status_code is not None else "ERROR",
+                    round(page.response_time_ms, 1),
+                    page.title,
+                    page.title_length,
+                    page.meta_description,
+                    page.description_length,
+                    len(page.h1_list),
+                    h1_str,
+                    len(page.h2_list),
+                    h2_str,
+                    page.canonical_url,
+                    page.internal_links_count,
+                    page.external_links_count,
+                    len(page.broken_links),
+                    broken_str,
+                    page.social_meta.og_title if page.social_meta else "",
+                    missing_alt,
+                    hierarchy_str,
+                    "YES" if (page.has_json_ld and page.json_ld_valid) else "NO",
+                    len(page.redirect_chain),
+                    issues_str,
+                ]
             ]
         )
 

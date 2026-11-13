@@ -8,7 +8,7 @@ from dataclasses import asdict
 
 from fastapi import FastAPI, HTTPException, Query, Request
 from fastapi.responses import HTMLResponse, JSONResponse, PlainTextResponse
-from pydantic import BaseModel, HttpUrl
+from pydantic import BaseModel, Field, HttpUrl
 
 from seo_audit.crawler import crawl_site
 from seo_audit.db import get_report, list_reports, save_report
@@ -38,8 +38,8 @@ def _fetch_report(report_id: str) -> SiteAuditReport:
 
 class AuditRequest(BaseModel):
     url: HttpUrl
-    max_pages: int = 30
-    max_external_links: int = 50
+    max_pages: int = Field(default=30, ge=1, le=100)
+    max_external_links: int = Field(default=50, ge=1, le=100)
 
 
 @app.get("/health")
@@ -745,6 +745,15 @@ async def index():
     const diffArea = document.getElementById("diffArea");
     let selectedAudits = [];
 
+    function escapeHtml(str) {
+      return String(str ?? "")
+        .replace(/&/g, "&amp;")
+        .replace(/</g, "&lt;")
+        .replace(/>/g, "&gt;")
+        .replace(/"/g, "&quot;")
+        .replace(/'/g, "&#39;");
+    }
+
     // History and Selection Logic
     async function loadHistory() {
       const container = document.getElementById("historyTableContainer");
@@ -771,7 +780,7 @@ async def index():
                 <input type="checkbox" class="audit-select-cb" data-id="${r.report_id}" ${isChecked} onchange="toggleSelectAudit('${r.report_id}')" />
               </td>
               <td class="mono font-xs cell-url">
-                <a href="${r.target_url}" target="_blank" class="table-link">${r.target_url}</a>
+                <a href="${escapeHtml(r.target_url)}" target="_blank" class="table-link">${escapeHtml(r.target_url)}</a>
               </td>
               <td class="font-xs text-muted mono">${dateStr}</td>
               <td class="text-center font-sm font-semibold">${r.pages_count}</td>

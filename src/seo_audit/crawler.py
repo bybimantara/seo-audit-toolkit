@@ -7,12 +7,13 @@ import ipaddress
 import socket
 import time
 from collections import deque
-from urllib.parse import urldefrag, urlparse
+from urllib.parse import urldefrag, urlparse, urlsplit
 
 import httpx
 
 from seo_audit.analyzer import (
     analyze_page_html,
+    calculate_page_score,
     is_same_site,
     parse_ai_bot_rules,
     parse_robots_txt,
@@ -29,40 +30,77 @@ from seo_audit.models import (
 DEFAULT_USER_AGENT = "SEOAuditToolkit/0.1 (+https://github.com/bybimantara/seo-audit-toolkit)"
 
 
-def is_private_or_local_host(hostname: str) -> bool:
-    """Validate if hostname points to localhost or private/link-local/loopback IP."""
+MAX_RESPONSE_BYTES = 5_000_000
+
+
+def _extract_clean_host(hostname: str) -> str:
+    """Safely extract hostname/IP including IPv6 literals."""
     if not hostname:
+        return ""
+    parsed = urlsplit(f"//{hostname}") if "://" not in hostname else urlsplit(hostname)
+    return (parsed.hostname or "").strip().lower()
+
+
+def _is_forbidden_ip(ip_obj: ipaddress.IPv4Address | ipaddress.IPv6Address) -> bool:
+    return (
+        ip_obj.is_private
+        or ip_obj.is_loopback
+        or ip_obj.is_link_local
+        or ip_obj.is_multicast
+        or ip_obj.is_reserved
+        or ip_obj.is_unspecified
+    )
+
+
+def is_private_or_local_host(hostname: str) -> bool:
+    """Validate if hostname points to localhost or private/link-local/loopback IP (fail-closed)."""
+    host_clean = _extract_clean_host(hostname)
+    if not host_clean:
         return True
-    host_clean = hostname.split(":")[0].strip().lower()
     if host_clean in ("localhost", "127.0.0.1", "::1"):
         return True
     try:
-        ip = ipaddress.ip_address(host_clean)
-        return (
-            ip.is_private
-            or ip.is_loopback
-            or ip.is_link_local
-            or ip.is_multicast
-            or ip.is_reserved
-        )
+        return _is_forbidden_ip(ipaddress.ip_address(host_clean))
     except ValueError:
-        # Hostname, not direct IP. Try DNS resolution
         try:
             addr_info = socket.getaddrinfo(host_clean, None)
             for item in addr_info:
-                ip_str = item[4][0]
-                resolved_ip = ipaddress.ip_address(ip_str)
-                if (
-                    resolved_ip.is_private
-                    or resolved_ip.is_loopback
-                    or resolved_ip.is_link_local
-                    or resolved_ip.is_multicast
-                    or resolved_ip.is_reserved
-                ):
+                if _is_forbidden_ip(ipaddress.ip_address(item[4][0])):
                     return True
         except (socket.gaierror, OSError):
-            return False
+            return True
     return False
+
+
+async def async_is_private_or_local_host(
+    hostname: str, dns_cache: dict[str, bool] | None = None
+) -> bool:
+    """Non-blocking SSRF host/DNS validator (fail-closed)."""
+    host_clean = _extract_clean_host(hostname)
+    if not host_clean:
+        return True
+    if dns_cache is not None and host_clean in dns_cache:
+        return dns_cache[host_clean]
+    if host_clean in ("localhost", "127.0.0.1", "::1"):
+        if dns_cache is not None:
+            dns_cache[host_clean] = True
+        return True
+    try:
+        result = _is_forbidden_ip(ipaddress.ip_address(host_clean))
+    except ValueError:
+        result = False
+        try:
+            loop = asyncio.get_running_loop()
+            addr_info = await loop.getaddrinfo(host_clean, None)
+            for item in addr_info:
+                if _is_forbidden_ip(ipaddress.ip_address(item[4][0])):
+                    result = True
+                    break
+        except (socket.gaierror, OSError):
+            result = True
+    if dns_cache is not None:
+        dns_cache[host_clean] = result
+    return result
 
 
 async def check_single_link(
@@ -191,11 +229,23 @@ async def crawl_site(
 
     # Use provided client or create one
     close_client = False
+    dns_cache: dict[str, bool] = {}
     if client is None:
+        async def _ssrf_request_hook(request: httpx.Request) -> None:
+            if not allow_private_network:
+                host = request.url.host or ""
+                if await async_is_private_or_local_host(host, dns_cache=dns_cache):
+                    raise httpx.RequestError(
+                        f"SSRF blocked: access to private/local host '{host}' is forbidden.",
+                        request=request,
+                    )
+
         client = httpx.AsyncClient(
             headers={"User-Agent": DEFAULT_USER_AGENT},
             timeout=timeout,
             follow_redirects=True,
+            max_redirects=5,
+            event_hooks={"request": [_ssrf_request_hook]},
         )
         close_client = True
 
@@ -203,24 +253,31 @@ async def crawl_site(
         # Step 1: Check site metadata (robots.txt & sitemap.xml)
         site_meta = await check_site_meta(client, clean_start)
 
-        # Step 2: BFS crawl for internal pages
+        # Step 2: Deterministic level-order batch BFS for internal pages
         pages_audit: list[PageAudit] = []
         visited_urls: set[str] = set()
+        queued_urls: set[str] = {clean_start}
         queue: deque[str] = deque([clean_start])
 
-        # Also queue URLs from sitemap if same site and not too many
-        if site_meta.sitemap_found and site_meta.sitemap_valid_xml:
+        # Also queue URLs from sitemap if same site and not a sitemapindex
+        if (
+            site_meta.sitemap_found
+            and site_meta.sitemap_valid_xml
+            and not site_meta.sitemap_is_index
+        ):
             try:
                 s_resp = await client.get(
                     site_meta.sitemap_url, timeout=timeout, follow_redirects=True
                 )
-                if s_resp.status_code == 200:
-                    _, _, s_urls = parse_sitemap_xml(s_resp.text)
-                    for u in s_urls:
-                        if is_same_site(u, clean_start):
-                            clean_u, _ = urldefrag(u)
-                            if clean_u not in queue and clean_u not in visited_urls:
-                                queue.append(clean_u)
+                if s_resp.status_code == 200 and len(s_resp.content) <= MAX_RESPONSE_BYTES:
+                    _, is_idx, s_urls = parse_sitemap_xml(s_resp.text)
+                    if not is_idx:
+                        for u in sorted(s_urls):
+                            if is_same_site(u, clean_start) and not u.lower().endswith(".xml"):
+                                clean_u, _ = urldefrag(u)
+                                if clean_u not in queued_urls and clean_u not in visited_urls:
+                                    queued_urls.add(clean_u)
+                                    queue.append(clean_u)
             except (httpx.RequestError, OSError):
                 pass
 
