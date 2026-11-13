@@ -8,15 +8,15 @@ Built without headless browser overhead, utilizing asynchronous HTTP (`asyncio` 
 
 ## Features
 
-- **Async Site Crawler**: Breadth-first search (BFS) crawler with URL normalization, crawl loop protection, and private network/anti-SSRF filtering.
-- **On-Page & Hierarchy**: Inspects title tags, meta descriptions, H1, H2, canonical URLs, and detects heading hierarchy skips (e.g., H1 directly skipping to H3 without an H2).
-- **Broken Link Verification**: Validates HTTP response codes (404/5xx) for both internal and external links with destination deduplication.
-- **Redirect Chain Tracker**: Traces multi-hop redirect paths (301/302) and flags redirect chains or potential loops.
-- **Directives & AI Readiness**: Validates `robots.txt` syntax, parses `sitemap.xml` (including `<sitemapindex>`), detects `/llms.txt`, and checks directives for AI bots (GPTBot, ClaudeBot, PerplexityBot).
-- **Social & Media Audit**: Extracts OpenGraph and Twitter Cards metadata, validates JSON-LD Schema.org syntax, and identifies images missing `alt` attributes or `width`/`height` dimensions.
-- **Export & Reporting**: Produces 22-column CSV exports and standalone HTML reports designed in a clean Semrush/Ahrefs light theme without external CDN dependencies.
-- **History & Diffing**: Automatically stores audit runs in a local SQLite database and computes diffs between two audits (score delta, newly introduced regressions, resolved issues, and broken link changes).
-- **Dual Interface**: Command-Line Interface (CLI) for automated workflows/CI and an interactive FastAPI web dashboard.
+- Breadth-first search (BFS) internal site crawler with URL normalization, crawl loop protection, and private network/anti-SSRF filtering.
+- On-page metadata checks for `<title>`, meta descriptions, H1/H2 counts, canonical URLs, and heading hierarchy skips (for example, H1 jumping straight to H3).
+- HTTP status verification (`404`/`5xx`) for internal and external links with destination deduplication.
+- Multi-hop redirect tracing (`301`/`302`) that flags long chains and redirect loops.
+- Site directive checks covering `robots.txt` syntax, `sitemap.xml` (including `<sitemapindex>`), `/llms.txt`, and AI crawler rules (GPTBot, ClaudeBot, PerplexityBot).
+- OpenGraph, Twitter Card, and JSON-LD validation alongside image checks for missing `alt` attributes or `width`/`height` dimensions.
+- 22-column CSV exports and offline-capable standalone HTML reports with zero external CDN dependencies.
+- Local SQLite persistence for storing audit history and diffing score deltas, regressions, resolved issues, and broken link changes across runs.
+- Command-line workflow (with CI score gates) and an interactive FastAPI web dashboard.
 
 ---
 
@@ -69,6 +69,7 @@ Available flags:
 --timeout <float>           Request timeout in seconds (default: 10.0)
 --no-save                   Skip saving this audit to the local history database
 --json                      Print raw report JSON to stdout
+--fail-under <int>          Exit with code 1 if health score is below this threshold
 ```
 
 ### 2. Audit History & Diffing
