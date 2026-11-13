@@ -572,7 +572,7 @@ def generate_html_report(report: SiteAuditReport) -> str:
       <div class="stat-box">
         <div class="stat-label">Total Issues Flagged</div>
         <div class="stat-number" style="color: {'#EF4444' if total_issues > 0 else 'var(--text)'};">{total_issues}</div>
-        <div class="stat-caption">Alt, OG, Meta, & Heading alerts</div>
+        <div class="stat-caption">Includes {total_missing_alt} image alt issues</div>
       </div>
       <div class="stat-box">
         <div class="stat-label">Broken Links (404/5xx)</div>

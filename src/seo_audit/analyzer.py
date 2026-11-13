@@ -112,7 +112,7 @@ def check_json_ld(soup: BeautifulSoup) -> tuple[bool, bool]:
             continue
         try:
             json.loads(content)
-        except Exception:
+        except (json.JSONDecodeError, ValueError):
             all_valid = False
 
     return True, all_valid
@@ -138,16 +138,13 @@ def parse_ai_bot_rules(robots_txt: str) -> dict[str, str]:
             elif key == "disallow":
                 for agent in current_agents:
                     for bot in common_ai_bots:
-                        if agent == bot or agent == "*":
-                            # if disallowed root path '/'
-                            if val == "/" or val == "/*":
-                                rules[bot.capitalize()] = "disallowed"
+                        if (agent == bot or agent == "*") and (val == "/" or val == "/*"):
+                            rules[bot.capitalize()] = "disallowed"
             elif key == "allow":
                 for agent in current_agents:
                     for bot in common_ai_bots:
-                        if agent == bot:
-                            if val == "/":
-                                rules[bot.capitalize()] = "allowed"
+                        if agent == bot and val == "/":
+                            rules[bot.capitalize()] = "allowed"
 
     # Default unspecified bots to 'allowed' if not explicitly disallowed
     for bot in common_ai_bots:
