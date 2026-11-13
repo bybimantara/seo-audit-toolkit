@@ -38,18 +38,20 @@ def classify_issue(issue_str: str) -> tuple[str, str]:
         k in msg
         for k in [
             "missing title tag",
+            "missing meta title",
             "missing h1",
             "multiple h1",
             "redirect loop",
             "http 404",
             "http 500",
+            "page returned http error",
             "broken link",
             "disallowed from root",
         ]
     ):
         if any(
             k in msg
-            for k in ["http 404", "http 500", "broken link", "redirect loop"]
+            for k in ["http 404", "http 500", "page returned http error", "broken link", "redirect loop"]
         ):
             return IssueSeverity.CRITICAL.value, IssueCategory.CRAWLABILITY.value
         if "disallowed from root" in msg:
@@ -72,7 +74,7 @@ def classify_issue(issue_str: str) -> tuple[str, str]:
         return IssueSeverity.WARNING.value, IssueCategory.IMAGES.value
 
     # Directives category
-    if any(k in msg for k in ["robots.txt", "sitemap.xml", "llms.txt", "bot"]):
+    if any(k in msg for k in ["robots.txt", "sitemap.xml", "llms.txt", "bot", "noindex", "x-robots-tag"]):
         if "llms.txt" in msg:
             return IssueSeverity.NOTICE.value, IssueCategory.DIRECTIVES.value
         return IssueSeverity.WARNING.value, IssueCategory.DIRECTIVES.value
@@ -92,7 +94,7 @@ def classify_issue(issue_str: str) -> tuple[str, str]:
         return IssueSeverity.WARNING.value, IssueCategory.CRAWLABILITY.value
 
     # On-Page notices
-    if any(k in msg for k in ["missing h2", "heading level skipped"]):
+    if any(k in msg for k in ["missing h2", "heading level skipped", "thin content", "spa/csr"]):
         if "heading level skipped" in msg:
             return IssueSeverity.WARNING.value, IssueCategory.ON_PAGE.value
         return IssueSeverity.NOTICE.value, IssueCategory.ON_PAGE.value

@@ -37,10 +37,14 @@ def test_analyze_page_html_healthy():
         <title>Valid SEO Title for Testing Purposes</title>
         <meta name="description" content="This is an ideal meta description that contains well over seventy characters for proper SEO testing and analysis." />
         <link rel="canonical" href="https://example.com/page" />
+        <meta property="og:title" content="Valid SEO Title" />
+        <meta property="og:description" content="Valid OG description" />
+        <meta property="og:image" content="https://example.com/og.png" />
       </head>
       <body>
         <h1>Primary Heading One</h1>
         <h2>Section Heading Two</h2>
+        <p>""" + " ".join(["word"] * 160) + """</p>
         <a href="/internal-link">Internal Page</a>
         <a href="https://external.org/info">External Reference</a>
       </body>
@@ -64,6 +68,22 @@ def test_analyze_page_html_healthy():
     assert audit.external_links_count == 1
     assert len(audit.issues) == 0
     assert audit.page_score == 100
+
+
+def test_noindex_and_spa_detection():
+    noindex_html = """
+    <html><head>
+      <title>Admin Page</title>
+      <meta name="robots" content="noindex, nofollow" />
+    </head><body><h1>Admin</h1><p>""" + " ".join(["text"] * 160) + """</p></body></html>
+    """
+    res = analyze_page_html(noindex_html, "https://example.com/admin", "https://example.com/admin", 200, 200, 10.0, "text/html")
+    assert "Page has meta robots noindex" in res.issues
+    assert res.page_score < 100
+
+    spa_html = '<html><head><title>App</title></head><body><div id="root"></div></body></html>'
+    spa_res = analyze_page_html(spa_html, "https://example.com/", "https://example.com/", 200, 200, 10.0, "text/html")
+    assert "Potential SPA/CSR shell (minimal static HTML text)" in spa_res.issues
 
 
 def test_analyze_page_html_with_issues():

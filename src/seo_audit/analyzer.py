@@ -124,6 +124,7 @@ def parse_ai_bot_rules(robots_txt: str) -> dict[str, str]:
     rules: dict[str, str] = {}
 
     current_agents: list[str] = []
+    last_was_user_agent = False
     for line in robots_txt.splitlines():
         line = line.strip()
         if not line or line.startswith("#"):
@@ -134,17 +135,26 @@ def parse_ai_bot_rules(robots_txt: str) -> dict[str, str]:
             val = val.strip().lower()
 
             if key == "user-agent":
-                current_agents = [val] if val else []
+                if last_was_user_agent:
+                    if val:
+                        current_agents.append(val)
+                else:
+                    current_agents = [val] if val else []
+                last_was_user_agent = True
             elif key == "disallow":
+                last_was_user_agent = False
                 for agent in current_agents:
                     for bot in common_ai_bots:
                         if (agent == bot or agent == "*") and (val == "/" or val == "/*"):
                             rules[bot.capitalize()] = "disallowed"
             elif key == "allow":
+                last_was_user_agent = False
                 for agent in current_agents:
                     for bot in common_ai_bots:
                         if agent == bot and val == "/":
                             rules[bot.capitalize()] = "allowed"
+            else:
+                last_was_user_agent = False
 
     # Default unspecified bots to 'allowed' if not explicitly disallowed
     for bot in common_ai_bots:
@@ -202,6 +212,22 @@ def calculate_page_score(issues: list[str], status_code: int | None) -> int:
         elif "Missing canonical" in issue:
             score -= 10
         elif "Non-self-referencing canonical" in issue:
+            score -= 5
+        elif "missing alt text" in issue:
+            score -= 5
+        elif "missing width or height" in issue:
+            score -= 2
+        elif "Heading level skipped" in issue:
+            score -= 5
+        elif "Invalid JSON-LD" in issue:
+            score -= 5
+        elif "Redirect chain too long" in issue:
+            score -= 5
+        elif "Missing og:" in issue or "Missing Twitter Card" in issue:
+            score -= 2
+        elif "noindex" in issue.lower():
+            score -= 10
+        elif "Duplicate " in issue:
             score -= 5
 
     return max(0, min(100, score))
@@ -282,15 +308,34 @@ def analyze_page_html(
     issues.extend(hierarchy_issues)
 
     social_meta = extract_social_meta(soup)
+    issues.extend(social_meta.issues)
 
     image_issues = audit_images(soup, effective_url)
     missing_alt_count = sum(1 for img in image_issues if img.missing_alt)
     if missing_alt_count > 0:
         issues.append(f"{missing_alt_count} image(s) missing alt text")
+    missing_dim_count = sum(1 for img in image_issues if img.missing_dimensions)
+    if missing_dim_count > 0:
+        issues.append(f"{missing_dim_count} image(s) missing width or height")
 
     has_json_ld, json_ld_valid = check_json_ld(soup)
     if has_json_ld and not json_ld_valid:
         issues.append("Invalid JSON-LD structured data syntax")
+
+    # Indexability (meta robots noindex) & Content / SPA heuristics
+    robots_meta = soup.find("meta", attrs={"name": lambda v: v and v.lower() == "robots"})
+    if robots_meta and "noindex" in (robots_meta.get("content") or "").lower():
+        issues.append("Page has meta robots noindex")
+
+    body_text = soup.body.get_text(" ", strip=True) if soup.body else ""
+    word_count = len(body_text.split())
+    if status_code == 200 and word_count < 150:
+        if word_count < 30 and any(
+            marker in html.lower() for marker in ('id="root"', 'id="app"', 'id="__next"')
+        ):
+            issues.append("Potential SPA/CSR shell (minimal static HTML text)")
+        else:
+            issues.append(f"Thin content ({word_count} words)")
 
     # Links extraction
     internal_links: list[tuple[str, str]] = []
@@ -366,6 +411,9 @@ def parse_robots_txt(content: str, robots_url: str) -> tuple[list[str], list[str
 
 def parse_sitemap_xml(content: str) -> tuple[bool, bool, list[str]]:
     """Parse sitemap.xml to extract URLs and detect if it is a sitemapindex."""
+    lowered = content.lower()
+    if "<!doctype" in lowered or "<!entity" in lowered:
+        return False, False, []
     try:
         root = ET.fromstring(content)
     except ET.ParseError:
