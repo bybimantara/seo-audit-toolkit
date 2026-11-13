@@ -1,73 +1,140 @@
-# 🔍 SEO Audit Toolkit
+# SEO Audit Toolkit
 
-Toolkit komprehensif untuk menganalisis, mengaudit, dan mengoptimalkan SEO situs web — mulai dari audit teknis (*crawlability*, *indexability*, *Core Web Vitals*), struktur data (*Schema.org*), kualitas konten (*E-E-A-T*), hingga kesiapan *AI Search / Generative Engine Optimization (GEO)*.
+A lightweight Python toolkit for crawling websites, auditing technical on-page SEO factors, validating robots/sitemaps, checking broken links, and generating standalone CSV/HTML reports or running an interactive web dashboard.
 
----
-
-## ✨ Fokus Utama
-
-- **Technical SEO Audit**: Pemeriksaan *robots.txt*, *sitemap.xml*, status HTTP, *canonical tags*, struktur URL, dan *Core Web Vitals*.
-- **On-Page & Content Audit**: Evaluasi *meta tags*, struktur *heading* (`H1`–`H6`), kualitas konten (*E-E-A-T*), dan optimasi gambar.
-- **Structured Data & Schema**: Validasi dan pembuatan *JSON-LD Schema.org* untuk *Rich Results*.
-- **AI Search / GEO Readiness**: Analisis keterbacaan untuk *crawler* AI, *llms.txt*, dan optimasi sitasi pada mesin pencari berbasis AI.
+Built without headless browser overhead, utilizing asynchronous HTTP (`asyncio` + `httpx`), HTML parsing (`BeautifulSoup4`), and Python's standard library SQLite (`sqlite3`) for local audit persistence and regression tracking.
 
 ---
 
-## 📂 Struktur Repositori
+## Features
 
-```text
-seo-audit-toolkit/
-├── src/seo_audit/        # Core engine (analyzer, crawler, models, reporters, web, cli)
-├── tests/                # Automated unit & integration tests
-├── docs/                 # Dokumentasi internal (PRD, contract, plan, progress, dll.)
-├── .env.example          # Template konfigurasi environment (tanpa secret)
-├── .gitignore            # Pengecualian berkas Git & dokumen internal agent
-├── LICENSE               # Lisensi proyek
-├── pyproject.toml        # Konfigurasi package, tool uv & pytest
-└── README.md             # Dokumentasi utama proyek
-```
+- **Async Site Crawler**: Breadth-first search (BFS) crawler with URL normalization, crawl loop protection, and private network/anti-SSRF filtering.
+- **On-Page & Hierarchy**: Inspects title tags, meta descriptions, H1, H2, canonical URLs, and detects heading hierarchy skips (e.g., H1 directly skipping to H3 without an H2).
+- **Broken Link Verification**: Validates HTTP response codes (404/5xx) for both internal and external links with destination deduplication.
+- **Redirect Chain Tracker**: Traces multi-hop redirect paths (301/302) and flags redirect chains or potential loops.
+- **Directives & AI Readiness**: Validates `robots.txt` syntax, parses `sitemap.xml` (including `<sitemapindex>`), detects `/llms.txt`, and checks directives for AI bots (GPTBot, ClaudeBot, PerplexityBot).
+- **Social & Media Audit**: Extracts OpenGraph and Twitter Cards metadata, validates JSON-LD Schema.org syntax, and identifies images missing `alt` attributes or `width`/`height` dimensions.
+- **Export & Reporting**: Produces 22-column CSV exports and standalone HTML reports designed in a clean Semrush/Ahrefs light theme without external CDN dependencies.
+- **History & Diffing**: Automatically stores audit runs in a local SQLite database and computes diffs between two audits (score delta, newly introduced regressions, resolved issues, and broken link changes).
+- **Dual Interface**: Command-Line Interface (CLI) for automated workflows/CI and an interactive FastAPI web dashboard.
 
 ---
 
-## ⚡ Cara Menjalankan
+## Requirements
 
-### 1. Audit via CLI
-Jalankan audit langsung ke target URL dari terminal:
-```bash
-uv run seo-audit https://example.com --max-pages 50 --csv report.csv --html report.html
-```
-
-### 2. Jalankan Web Dashboard
-Jalankan web server lokal untuk audit interaktif melalui browser:
-```bash
-uv run seo-audit serve --reload
-```
-Buka browser di `http://127.0.0.1:8000`.
-
-### 3. Menjalankan Pengujian (Testing)
-```bash
-uv run pytest
-```
+- Python 3.11 or later
+- [uv](https://docs.astral.sh/uv/) (recommended) or pip
 
 ---
 
-## 🚀 Persiapan Awal (Getting Started)
+## Installation
 
-1. **Clone repositori**:
+1. Clone the repository:
    ```bash
    git clone https://github.com/bybimantara/seo-audit-toolkit.git
    cd seo-audit-toolkit
    ```
 
-2. **Konfigurasi Environment**:
-   Salin berkas `.env.example` menjadi `.env` dan sesuaikan variabel yang dibutuhkan:
+2. Synchronize dependencies using `uv`:
+   ```bash
+   uv sync
+   ```
+
+3. (Optional) Configure environment variables:
    ```bash
    cp .env.example .env
    ```
 
 ---
 
-## 📄 Lisensi
+## Usage
 
-Didistribusikan di bawah lisensi yang tertera pada berkas [LICENSE](./LICENSE).
+### 1. CLI Audit
 
+Audit a target website directly from the terminal:
+```bash
+uv run seo-audit https://example.com
+```
+
+Generate both CSV and HTML reports:
+```bash
+uv run seo-audit https://example.com --max-pages 50 --csv report.csv --html report.html
+```
+
+Available flags:
+```text
+--max-pages <int>           Maximum internal pages to crawl (default: 50)
+--max-external-links <int>  Maximum external links to verify (default: 100)
+--concurrency <int>         Concurrent asynchronous requests (default: 10)
+--timeout <float>           Request timeout in seconds (default: 10.0)
+--no-save                   Skip saving this audit to the local history database
+--json                      Print raw report JSON to stdout
+```
+
+### 2. Audit History & Diffing
+
+List past audit runs stored in SQLite:
+```bash
+uv run seo-audit history --limit 20
+```
+
+Compare two audits to detect regressions or score improvements:
+```bash
+uv run seo-audit compare <old_report_id> <new_report_id>
+```
+
+Output comparison as JSON for CI/CD pipelines:
+```bash
+uv run seo-audit compare <old_report_id> <new_report_id> --json
+```
+
+### 3. Interactive Web Dashboard
+
+Launch the local web server:
+```bash
+uv run seo-audit serve --reload
+```
+Navigate to `http://127.0.0.1:8000` to run audits interactively, download reports, view past history, and compare audit diffs visually.
+
+---
+
+## Testing & Code Quality
+
+Run the test suite:
+```bash
+uv run pytest
+```
+
+Run code formatting and linter checks:
+```bash
+uv run ruff check .
+```
+
+---
+
+## Project Structure
+
+```text
+seo-audit-toolkit/
+├── src/
+│   └── seo_audit/
+│       ├── analyzer.py     # HTML, On-Page, OG, JSON-LD, heading, and directive parsing
+│       ├── cli.py          # Command-line interface (audit, history, compare, serve)
+│       ├── crawler.py      # Async BFS crawler, redirect tracing, and broken link checks
+│       ├── db.py           # SQLite persistence layer for audit history
+│       ├── diff.py         # Audit comparison and regression tracking engine
+│       ├── models.py       # Data models and serialization logic
+│       ├── reporters.py    # CSV and standalone HTML report generators
+│       └── web.py          # FastAPI web application and dashboard
+├── tests/                  # Automated unit and integration test suite
+├── .env.example            # Environment configuration template
+├── pyproject.toml          # Project configuration, dependencies, and build settings
+├── LICENSE                 # License file
+└── README.md               # Main project documentation
+```
+
+---
+
+## License
+
+Distributed under the MIT License. See [LICENSE](./LICENSE) for details.
