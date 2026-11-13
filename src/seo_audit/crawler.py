@@ -151,7 +151,6 @@ async def check_site_meta(
     parsed_base = urlparse(base_url)
     origin = f"{parsed_base.scheme}://{parsed_base.netloc}"
 
-    # 1. Check robots.txt
     robots_url = f"{origin}/robots.txt"
     result.robots_url = robots_url
     try:
@@ -168,7 +167,6 @@ async def check_site_meta(
     except (httpx.RequestError, OSError) as err:
         result.issues.append(f"Failed to fetch robots.txt ({err.__class__.__name__})")
 
-    # 1.5 Check /llms.txt (AI Readiness)
     llms_url = f"{origin}/llms.txt"
     result.llms_txt_url = llms_url
     try:
@@ -178,7 +176,6 @@ async def check_site_meta(
     except (httpx.RequestError, OSError):
         result.llms_txt_found = False
 
-    # 2. Determine and check sitemap.xml
     candidate_sitemap = (
         result.sitemaps_in_robots[0]
         if result.sitemaps_in_robots
@@ -227,7 +224,6 @@ async def crawl_site(
 
     clean_start, _ = urldefrag(start_url)
 
-    # Use provided client or create one
     close_client = False
     dns_cache: dict[str, bool] = {}
     if client is None:
@@ -250,10 +246,8 @@ async def crawl_site(
         close_client = True
 
     try:
-        # Step 1: Check site metadata (robots.txt & sitemap.xml)
         site_meta = await check_site_meta(client, clean_start)
 
-        # Step 2: Deterministic level-order batch BFS for internal pages
         pages_audit: list[PageAudit] = []
         visited_urls: set[str] = set()
         queued_urls: set[str] = {clean_start}
@@ -289,7 +283,6 @@ async def crawl_site(
                 continue
             visited_urls.add(current_url)
 
-            # Fetch page
             page_start = time.perf_counter()
             initial_status = None
             final_status = None
@@ -315,7 +308,6 @@ async def crawl_site(
                         html_text = resp_final.text
                         content_type = resp_final.headers.get("content-type", "")
 
-                        # Capture redirect history
                         for hop in resp_final.history:
                             redirect_chain.append(
                                 RedirectHop(url=str(hop.url), status_code=hop.status_code)
@@ -347,7 +339,6 @@ async def crawl_site(
                     audit.issues.append(
                         f"Redirect chain too long ({len(redirect_chain)} hops)"
                     )
-                # Enqueue new internal links found
                 for link_url, _ in audit.internal_links:
                     if (
                         link_url not in visited_urls
@@ -374,7 +365,6 @@ async def crawl_site(
 
             pages_audit.append(audit)
 
-        # Step 3: Deduplicate and check broken links
         link_occurrences: dict[str, list[tuple[str, str, bool]]] = {}
         for page in pages_audit:
             for i_url, i_anchor in page.internal_links:
@@ -416,7 +406,6 @@ async def crawl_site(
             if p.status_code and p.status_code >= 400:
                 broken_target_map[p.url] = (p.status_code, f"HTTP {p.status_code}")
 
-        # Map broken links back to source pages
         for target, (status, err) in broken_target_map.items():
             for src_url, anchor, is_ext in link_occurrences.get(target, []):
                 bl = BrokenLink(
@@ -432,7 +421,6 @@ async def crawl_site(
                     if p.url == src_url:
                         p.broken_links.append(bl)
 
-        # Step 4: Calculate overall site health score (0-100)
         avg_page_score = (
             sum(p.page_score for p in pages_audit) / len(pages_audit)
             if pages_audit

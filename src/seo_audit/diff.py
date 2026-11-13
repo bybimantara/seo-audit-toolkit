@@ -88,7 +88,6 @@ def compare_reports(
     ]
     resolved_issues.sort(key=lambda x: (x["url"], x["issue"]))
 
-    # Broken links comparison
     old_bl_map = {
         (bl.source_url, bl.target_url): bl for bl in old_report.broken_links
     }
@@ -105,7 +104,6 @@ def compare_reports(
         if key not in new_bl_map and bl.source_url in common_urls
     ]
 
-    # Meta directive changes
     meta_changes: list[str] = []
     if old_report.site_meta.robots_found != new_report.site_meta.robots_found:
         status_now = "found" if new_report.site_meta.robots_found else "missing"

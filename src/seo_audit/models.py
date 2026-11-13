@@ -33,7 +33,6 @@ def classify_issue(issue_str: str) -> tuple[str, str]:
     """
     msg = issue_str.lower()
 
-    # Critical issues
     if any(
         k in msg
         for k in [
@@ -67,19 +66,16 @@ def classify_issue(issue_str: str) -> tuple[str, str]:
             return IssueSeverity.WARNING.value, IssueCategory.SOCIAL.value
         return IssueSeverity.NOTICE.value, IssueCategory.SOCIAL.value
 
-    # Images category
     if any(k in msg for k in ["image", "alt text", "width or height"]):
         if "width or height" in msg:
             return IssueSeverity.NOTICE.value, IssueCategory.IMAGES.value
         return IssueSeverity.WARNING.value, IssueCategory.IMAGES.value
 
-    # Directives category
     if any(k in msg for k in ["robots.txt", "sitemap.xml", "llms.txt", "bot", "noindex", "x-robots-tag"]):
         if "llms.txt" in msg:
             return IssueSeverity.NOTICE.value, IssueCategory.DIRECTIVES.value
         return IssueSeverity.WARNING.value, IssueCategory.DIRECTIVES.value
 
-    # Crawlability category
     if any(
         k in msg
         for k in [
@@ -93,7 +89,6 @@ def classify_issue(issue_str: str) -> tuple[str, str]:
     ):
         return IssueSeverity.WARNING.value, IssueCategory.CRAWLABILITY.value
 
-    # On-Page notices
     if any(k in msg for k in ["missing h2", "heading level skipped", "thin content", "spa/csr"]):
         if "heading level skipped" in msg:
             return IssueSeverity.WARNING.value, IssueCategory.ON_PAGE.value

@@ -248,7 +248,6 @@ def analyze_page_html(
 
     soup = BeautifulSoup(html, "html.parser")
 
-    # Title extraction
     title_tag = soup.find("title")
     title = title_tag.get_text().strip() if title_tag else ""
     title_length = len(title)
@@ -259,7 +258,6 @@ def analyze_page_html(
     elif title_length > 60:
         issues.append(f"Meta title too long ({title_length} chars, recommended <= 60)")
 
-    # Meta description extraction
     desc_tag = soup.find(
         "meta", attrs={"name": re.compile(r"^description$", re.IGNORECASE)}
     )
@@ -276,7 +274,6 @@ def analyze_page_html(
             f"Meta description too long ({desc_length} chars, recommended <= 160)"
         )
 
-    # Canonical extraction
     canonical_tag = soup.find("link", attrs={"rel": lambda r: r and "canonical" in r})
     canonical_url = ""
     if canonical_tag and canonical_tag.get("href"):
@@ -292,7 +289,6 @@ def analyze_page_html(
         if clean_effective.rstrip("/") != clean_canonical.rstrip("/"):
             issues.append(f"Non-self-referencing canonical (points to: {canonical_url})")
 
-    # Heading tags extraction
     h1_list = [h.get_text().strip() for h in soup.find_all("h1") if h.get_text().strip()]
     if not h1_list:
         issues.append("Missing H1 tag")
@@ -337,7 +333,6 @@ def analyze_page_html(
         else:
             issues.append(f"Thin content ({word_count} words)")
 
-    # Links extraction
     internal_links: list[tuple[str, str]] = []
     external_links: list[tuple[str, str]] = []
 
