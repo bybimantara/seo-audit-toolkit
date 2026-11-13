@@ -54,10 +54,7 @@ async def index():
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>SEO Audit Toolkit — Professional SEO Intelligence Platform</title>
-  <link rel="preconnect" href="https://fonts.googleapis.com">
-  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+  <title>SEO Audit Toolkit - Technical Site Auditor</title>
   <style>
     :root {
       --bg: #F8FAFC;
@@ -65,19 +62,17 @@ async def index():
       --surface-subtle: #F1F5F9;
       --border: #E2E8F0;
       --border-subtle: #EDF2F7;
-      --border-focus: #005BFF;
+      --border-focus: #0052CC;
       --text: #0F172A;
-      --text-muted: #64748B;
-      --text-light: #94A3B8;
-      
-      /* Semrush & Ahrefs vibrant light palette */
-      --semrush-orange: #FF642D;
-      --semrush-orange-hover: #E8521F;
-      --ahrefs-blue: #005BFF;
-      --ahrefs-blue-hover: #004BD6;
-      --green: #10B981;
-      --amber: #F59E0B;
-      --red: #EF4444;
+      --text-muted: #475569;
+
+      --brand-primary: #0052CC;
+      --brand-primary-hover: #003E99;
+      --brand-accent: #C2410C;
+      --brand-accent-hover: #9A3412;
+      --green: #047857;
+      --amber: #B45309;
+      --red: #B91C1C;
 
       --radius-sm: 6px;
       --radius-md: 10px;
@@ -94,22 +89,42 @@ async def index():
     }
 
     body {
-      font-family: 'Plus Jakarta Sans', system-ui, -apple-system, sans-serif;
+      font-family: Inter, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
       background-color: var(--bg);
       color: var(--text);
       line-height: 1.5;
       -webkit-font-smoothing: antialiased;
     }
 
-    /* Top Navigation Bar */
+    .sr-only {
+      position: absolute;
+      width: 1px;
+      height: 1px;
+      padding: 0;
+      margin: -1px;
+      overflow: hidden;
+      clip: rect(0, 0, 0, 0);
+      white-space: nowrap;
+      border: 0;
+    }
+
+    a:focus-visible,
+    button:focus-visible,
+    input:focus-visible {
+      outline: 2px solid var(--border-focus);
+      outline-offset: 2px;
+    }
+
     .topbar {
       background: var(--surface);
       border-bottom: 1px solid var(--border);
-      height: 60px;
-      padding: 0 32px;
+      min-height: 60px;
+      padding: 8px 32px;
       display: flex;
+      flex-wrap: wrap;
       align-items: center;
       justify-content: space-between;
+      gap: 12px;
     }
     .brand-logo {
       display: flex;
@@ -124,7 +139,7 @@ async def index():
     .brand-icon {
       width: 28px;
       height: 28px;
-      background: var(--ahrefs-blue);
+      background: var(--brand-primary);
       border-radius: var(--radius-sm);
       display: flex;
       align-items: center;
@@ -136,36 +151,29 @@ async def index():
     .topbar-nav {
       display: flex;
       align-items: center;
-      gap: 20px;
+      gap: 16px;
       font-size: 0.875rem;
       font-weight: 600;
     }
     .topbar-nav a {
       color: var(--text-muted);
       text-decoration: none;
+      min-height: 44px;
+      display: inline-flex;
+      align-items: center;
+      padding: 0 4px;
       transition: color 0.15s ease;
     }
     .topbar-nav a:hover, .topbar-nav a.active {
-      color: var(--ahrefs-blue);
-    }
-    .topbar-badge {
-      background: var(--surface-subtle);
-      border: 1px solid var(--border);
-      color: var(--text-muted);
-      font-size: 0.725rem;
-      font-weight: 600;
-      padding: 3px 8px;
-      border-radius: 20px;
+      color: var(--brand-primary);
     }
 
-    /* Main Container */
     .main-container {
       max-width: 1120px;
       margin: 0 auto;
       padding: 40px 24px 80px;
     }
 
-    /* Hero & URL Input Bar */
     .hero-search {
       text-align: center;
       margin-bottom: 36px;
@@ -180,13 +188,14 @@ async def index():
     .hero-subtitle {
       font-size: 1rem;
       color: var(--text-muted);
-      max-width: 600px;
+      max-width: 620px;
       margin: 0 auto 28px;
     }
 
     .input-bar {
       display: flex;
       align-items: center;
+      gap: 8px;
       background: var(--surface);
       border: 1px solid var(--border);
       border-radius: var(--radius-xl);
@@ -197,39 +206,46 @@ async def index():
       transition: border-color 0.15s ease, box-shadow 0.15s ease;
     }
     .input-bar:focus-within {
-      border-color: var(--ahrefs-blue);
-      box-shadow: 0 0 0 3px rgba(0, 91, 255, 0.12), var(--shadow-card);
+      border-color: var(--brand-primary);
+      box-shadow: 0 0 0 3px rgba(0, 82, 204, 0.16), var(--shadow-card);
     }
     .input-bar input {
       flex: 1;
+      min-width: 0;
       border: none;
       background: transparent;
       font-size: 1rem;
       font-family: inherit;
       color: var(--text);
+    }
+    .input-bar input:focus {
       outline: none;
     }
     .input-bar input::placeholder {
-      color: var(--text-light);
+      color: var(--text-muted);
+      opacity: 0.85;
     }
 
     .btn-audit {
-      background: var(--semrush-orange);
+      background: var(--brand-accent);
       color: #FFFFFF;
       border: none;
-      padding: 12px 28px;
+      min-height: 44px;
+      padding: 10px 26px;
       font-size: 0.95rem;
       font-weight: 700;
       font-family: inherit;
       border-radius: var(--radius-lg);
       cursor: pointer;
-      transition: background 0.15s ease, transform 0.05s ease;
-      display: flex;
+      transition: background-color 0.15s ease, transform 0.05s ease;
+      display: inline-flex;
       align-items: center;
+      justify-content: center;
       gap: 8px;
+      white-space: nowrap;
     }
     .btn-audit:hover {
-      background: var(--semrush-orange-hover);
+      background: var(--brand-accent-hover);
     }
     .btn-audit:active {
       transform: scale(0.99);
@@ -239,16 +255,21 @@ async def index():
       cursor: not-allowed;
     }
 
-    /* Options Bar */
     .options-row {
       display: flex;
+      flex-wrap: wrap;
       justify-content: center;
       align-items: center;
-      gap: 24px;
+      gap: 12px 24px;
       font-size: 0.85rem;
       color: var(--text-muted);
       max-width: 820px;
       margin: 0 auto;
+    }
+    .options-note {
+      margin-left: auto;
+      color: var(--text-muted);
+      font-size: 0.8rem;
     }
     .option-item {
       display: flex;
@@ -256,21 +277,20 @@ async def index():
       gap: 8px;
     }
     .option-item input[type="number"] {
-      width: 60px;
+      width: 68px;
+      min-height: 36px;
       padding: 4px 8px;
       border: 1px solid var(--border);
       border-radius: var(--radius-sm);
       background: var(--surface);
-      font-family: 'JetBrains Mono', monospace;
+      font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
       font-size: 0.85rem;
       color: var(--text);
-      outline: none;
     }
     .option-item input[type="number"]:focus {
-      border-color: var(--ahrefs-blue);
+      border-color: var(--brand-primary);
     }
 
-    /* Report Summary Banner (Semrush / Ahrefs Style) */
     .report-banner {
       background: var(--surface);
       border: 1px solid var(--border);
@@ -288,7 +308,7 @@ async def index():
       font-weight: 800;
       letter-spacing: 0.08em;
       text-transform: uppercase;
-      color: var(--ahrefs-blue);
+      color: var(--brand-primary);
       margin-bottom: 6px;
     }
     .report-domain {
@@ -301,8 +321,9 @@ async def index():
     }
     .report-subtitle-meta {
       display: flex;
+      flex-wrap: wrap;
       align-items: center;
-      gap: 12px;
+      gap: 10px 12px;
       font-size: 0.85rem;
       color: var(--text-muted);
       margin-bottom: 24px;
@@ -312,8 +333,9 @@ async def index():
       border: 1px solid var(--border);
       padding: 2px 8px;
       border-radius: 4px;
-      font-family: 'JetBrains Mono', monospace;
+      font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
       font-size: 0.75rem;
+      color: var(--text);
     }
 
     .report-buttons {
@@ -322,38 +344,53 @@ async def index():
       gap: 12px;
     }
     .btn-orange {
-      background: var(--semrush-orange);
+      background: var(--brand-accent);
       color: #FFFFFF;
+      min-height: 44px;
       padding: 10px 20px;
       font-size: 0.875rem;
       font-weight: 700;
+      font-family: inherit;
+      border: none;
       border-radius: var(--radius-md);
       text-decoration: none;
+      cursor: pointer;
       display: inline-flex;
       align-items: center;
+      justify-content: center;
       gap: 8px;
-      transition: background 0.15s ease;
+      transition: background-color 0.15s ease, transform 0.05s ease;
     }
     .btn-orange:hover {
-      background: var(--semrush-orange-hover);
+      background: var(--brand-accent-hover);
+    }
+    .btn-orange:active {
+      transform: translateY(1px);
     }
     .btn-outline {
       background: var(--surface);
       color: var(--text);
       border: 1px solid var(--border);
+      min-height: 44px;
       padding: 10px 20px;
       font-size: 0.875rem;
       font-weight: 600;
+      font-family: inherit;
       border-radius: var(--radius-md);
       text-decoration: none;
+      cursor: pointer;
       display: inline-flex;
       align-items: center;
+      justify-content: center;
       gap: 8px;
-      transition: all 0.15s ease;
+      transition: background-color 0.15s ease, border-color 0.15s ease;
     }
     .btn-outline:hover {
       border-color: var(--text-muted);
       background: var(--surface-subtle);
+    }
+    .btn-outline:active {
+      transform: translateY(1px);
     }
 
     /* Circular SVG Gauge */
@@ -481,7 +518,14 @@ async def index():
       color: var(--text);
     }
 
-    /* History & Diff Panels */
+    .history-header {
+      display: flex;
+      flex-wrap: wrap;
+      justify-content: space-between;
+      align-items: flex-end;
+      gap: 12px;
+      margin-bottom: 16px;
+    }
     .history-card {
       background: var(--surface);
       border: 1px solid var(--border);
@@ -513,30 +557,39 @@ async def index():
     .history-table tr:last-child td {
       border-bottom: none;
     }
+    .audit-select-cb {
+      width: 20px;
+      height: 20px;
+      cursor: pointer;
+      accent-color: var(--brand-primary);
+    }
     .score-pill {
       display: inline-block;
       padding: 3px 8px;
       border-radius: 4px;
       font-weight: 700;
       font-size: 0.775rem;
-      font-family: 'JetBrains Mono', monospace;
+      font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
     }
     .action-btn {
       display: inline-flex;
       align-items: center;
-      padding: 4px 9px;
+      justify-content: center;
+      min-height: 36px;
+      padding: 6px 12px;
       border-radius: var(--radius-sm);
       border: 1px solid var(--border);
       background: var(--surface);
       color: var(--text);
-      font-size: 0.75rem;
+      font-size: 0.775rem;
       font-weight: 600;
       text-decoration: none;
-      transition: all 0.15s ease;
+      cursor: pointer;
+      transition: background-color 0.15s ease, border-color 0.15s ease, color 0.15s ease;
     }
     .action-btn:hover {
-      border-color: var(--ahrefs-blue);
-      color: var(--ahrefs-blue);
+      border-color: var(--brand-primary);
+      color: var(--brand-primary);
       background: #EFF6FF;
     }
 
@@ -550,8 +603,10 @@ async def index():
     }
     .diff-header {
       display: flex;
+      flex-wrap: wrap;
       justify-content: space-between;
       align-items: center;
+      gap: 12px;
       margin-bottom: 20px;
       padding-bottom: 16px;
       border-bottom: 1px solid var(--border-subtle);
@@ -561,6 +616,18 @@ async def index():
       grid-template-columns: repeat(3, 1fr);
       gap: 16px;
       margin-bottom: 24px;
+    }
+    .diff-issues-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 20px;
+      margin-top: 20px;
+    }
+    .severity-cards-grid {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 14px;
+      margin-bottom: 20px;
     }
     .diff-stat-box {
       background: var(--surface-subtle);
@@ -606,12 +673,11 @@ async def index():
       color: #065F46;
     }
 
-    /* Loading Card */
     .loading-card {
       background: var(--surface);
       border: 1px solid var(--border);
       border-radius: var(--radius-xl);
-      padding: 48px;
+      padding: 48px 24px;
       text-align: center;
       margin-top: 32px;
       box-shadow: var(--shadow-sm);
@@ -620,7 +686,7 @@ async def index():
       width: 44px;
       height: 44px;
       border: 4px solid var(--surface-subtle);
-      border-top-color: var(--semrush-orange);
+      border-top-color: var(--brand-accent);
       border-radius: 50%;
       animation: spin 0.8s linear infinite;
       margin: 0 auto 16px;
@@ -629,67 +695,115 @@ async def index():
       to { transform: rotate(360deg); }
     }
 
-    .mono { font-family: 'JetBrains Mono', monospace; }
+    .mono { font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; }
     .font-xs { font-size: 0.775rem; }
     .font-sm { font-size: 0.875rem; }
     .text-muted { color: var(--text-muted); }
     .text-center { text-align: center; }
     .table-link { color: var(--text); text-decoration: none; font-weight: 600; }
-    .table-link:hover { color: var(--ahrefs-blue); text-decoration: underline; }
+    .table-link:hover { color: var(--brand-primary); text-decoration: underline; }
     .table-responsive { overflow-x: auto; }
 
-    /* Responsive */
-    @media (max-width: 840px) {
+    @media (max-width: 900px) {
+      .topbar {
+        padding: 10px 20px;
+      }
+      .main-container {
+        padding: 28px 18px 64px;
+      }
       .report-banner {
         grid-template-columns: 1fr;
+        padding: 24px;
+        gap: 24px;
       }
-      .metrics-grid-4, .diff-stat-grid {
+      .metrics-grid-4, .diff-stat-grid, .severity-cards-grid {
         grid-template-columns: 1fr 1fr;
       }
       .cat-pill-grid {
-        grid-template-columns: repeat(3, 1fr);
+        grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+      }
+      .diff-issues-grid {
+        grid-template-columns: 1fr;
       }
     }
-    @media (max-width: 520px) {
-      .metrics-grid-4, .diff-stat-grid, .cat-pill-grid {
+    @media (max-width: 600px) {
+      .topbar {
+        padding: 10px 16px;
+      }
+      .main-container {
+        padding: 24px 14px 48px;
+      }
+      .hero-title {
+        font-size: 1.65rem;
+      }
+      .metrics-grid-4, .diff-stat-grid, .severity-cards-grid, .cat-pill-grid {
         grid-template-columns: 1fr;
       }
       .input-bar {
         flex-direction: column;
+        padding: 8px;
+        border-radius: var(--radius-lg);
+      }
+      .input-bar input {
+        width: 100%;
+        padding: 10px 12px;
       }
       .btn-audit {
-        padding: 14px;
-        justify-content: center;
+        width: 100%;
+        padding: 12px;
+      }
+      .options-row {
+        justify-content: flex-start;
+      }
+      .options-note {
+        margin-left: 0;
+        width: 100%;
+        text-align: left;
+      }
+      .diff-card {
+        padding: 20px 16px;
+      }
+      .action-btn {
+        min-height: 44px;
+        padding: 8px 14px;
+      }
+      .audit-select-cb {
+        width: 24px;
+        height: 24px;
+      }
+    }
+    @media (prefers-reduced-motion: reduce) {
+      *, *::before, *::after {
+        transition: none !important;
+        animation: none !important;
       }
     }
   </style>
 </head>
 <body>
 
-  <!-- Top Navigation Bar -->
   <header class="topbar">
     <a href="/" class="brand-logo">
-      <div class="brand-icon">S</div>
+      <div class="brand-icon" aria-hidden="true">S</div>
       <span>SEO Audit Toolkit</span>
     </a>
-    <nav class="topbar-nav">
+    <nav class="topbar-nav" aria-label="Primary navigation">
       <a href="/" class="active">Site Audit</a>
       <a href="#historySection">History</a>
-      <span class="topbar-badge">v0.1.0 Ready</span>
     </nav>
   </header>
 
   <main class="main-container">
-    <!-- Hero Search Bar (Ahrefs / Semrush style) -->
     <div class="hero-search">
       <h1 class="hero-title">Site Audit & Health Inspector</h1>
-      <p class="hero-subtitle">Comprehensive on-page, canonical, broken link, and sitemap crawling for high-impact technical SEO.</p>
+      <p class="hero-subtitle">Inspect page titles, meta descriptions, heading hierarchy, canonicals, broken links, robots.txt, and XML sitemaps.</p>
       
       <form id="auditForm">
         <div class="input-bar">
+          <label for="url" class="sr-only">Target website URL</label>
           <input type="url" id="url" name="url" required placeholder="https://example.com" autofocus />
           <button type="submit" id="btnSubmit" class="btn-audit">
-            <span id="btnText">Start Audit</span>
+            <span id="btnText">Run Site Audit</span>
           </button>
         </div>
 
@@ -704,29 +818,26 @@ async def index():
             <input type="number" id="max_external_links" name="max_external_links" value="50" min="1" max="100" />
             <span>unique check limit</span>
           </div>
-          <div style="margin-left: auto; color: var(--text-light); font-size: 0.8rem;">
-            Instant report · No account required
+          <div class="options-note">
+            Local SQLite history · Standalone exports
           </div>
         </div>
       </form>
     </div>
 
-    <!-- Live Status / Result Area -->
     <div id="statusArea"></div>
 
-    <!-- Diff Comparison Area (hidden by default) -->
     <div id="diffArea" style="margin-top: 32px; display: none;"></div>
 
-    <!-- Recent Audit History Area -->
     <div id="historySection" style="margin-top: 48px;">
-      <div style="display: flex; justify-content: space-between; align-items: flex-end; margin-bottom: 16px;">
+      <div class="history-header">
         <div>
           <div class="section-title">Recent Audit History</div>
           <div class="section-desc">Stored in local SQLite database. Select any 2 audits to compare changes and detect regressions.</div>
         </div>
         <div id="compareActionBox" style="display: none; align-items: center; gap: 10px;">
           <span id="selectedCountText" style="font-size: 0.825rem; font-weight: 600; color: var(--text-muted);">2 selected</span>
-          <button id="btnCompare" class="btn-orange" style="padding: 7px 16px; font-size: 0.825rem; border-radius: var(--radius-sm); border: none; cursor: pointer;">
+          <button type="button" id="btnCompare" class="btn-orange" style="padding: 8px 16px; font-size: 0.825rem; border-radius: var(--radius-sm);">
             Compare Selected
           </button>
         </div>
@@ -754,7 +865,6 @@ async def index():
         .replace(/'/g, "&#39;");
     }
 
-    // History and Selection Logic
     async function loadHistory() {
       const container = document.getElementById("historyTableContainer");
       try {
@@ -768,30 +878,31 @@ async def index():
 
         let rows = reports.map(r => {
           const score = r.health_score;
-          const scoreColor = score >= 80 ? '#10B981' : score >= 50 ? '#F59E0B' : '#EF4444';
+          const scoreColor = score >= 80 ? '#065F46' : score >= 50 ? '#92400E' : '#991B1B';
           const bgPill = score >= 80 ? '#ECFDF5' : score >= 50 ? '#FFFBEB' : '#FEF2F2';
           const borderPill = score >= 80 ? '#A7F3D0' : score >= 50 ? '#FDE68A' : '#FECACA';
           const dateStr = new Date(r.audited_at).toLocaleString();
           const isChecked = selectedAudits.includes(r.report_id) ? 'checked' : '';
+          const cbLabel = `Select audit for ${escapeHtml(r.target_url)} (${escapeHtml(dateStr)})`;
 
           return `
             <tr>
               <td style="width: 36px; text-align: center;">
-                <input type="checkbox" class="audit-select-cb" data-id="${r.report_id}" ${isChecked} onchange="toggleSelectAudit('${r.report_id}')" />
+                <input type="checkbox" class="audit-select-cb" aria-label="${cbLabel}" data-id="${r.report_id}" ${isChecked} onchange="toggleSelectAudit('${r.report_id}')" />
               </td>
               <td class="mono font-xs cell-url">
                 <a href="${escapeHtml(r.target_url)}" target="_blank" class="table-link">${escapeHtml(r.target_url)}</a>
               </td>
-              <td class="font-xs text-muted mono">${dateStr}</td>
+              <td class="font-xs text-muted mono">${escapeHtml(dateStr)}</td>
               <td class="text-center font-sm font-semibold">${r.pages_count}</td>
-              <td class="text-center font-sm" style="color: ${r.broken_count > 0 ? '#EF4444' : '#10B981'}; font-weight: 600;">${r.broken_count}</td>
+              <td class="text-center font-sm" style="color: ${r.broken_count > 0 ? '#B91C1C' : '#047857'}; font-weight: 600;">${r.broken_count}</td>
               <td class="text-center">
                 <span class="score-pill" style="color: ${scoreColor}; background: ${bgPill}; border: 1px solid ${borderPill};">${score}/100</span>
               </td>
               <td style="text-align: right;">
                 <div style="display: flex; gap: 8px; justify-content: flex-end;">
-                  <a href="/api/reports/${r.report_id}/html" target="_blank" class="action-btn">HTML ↗</a>
-                  <a href="/api/reports/${r.report_id}/csv" class="action-btn">CSV ↓</a>
+                  <a href="/api/reports/${r.report_id}/html" target="_blank" class="action-btn" aria-label="Open HTML report for ${escapeHtml(r.target_url)}">HTML</a>
+                  <a href="/api/reports/${r.report_id}/csv" download class="action-btn" aria-label="Download CSV report for ${escapeHtml(r.target_url)}">CSV</a>
                 </div>
               </td>
             </tr>
@@ -817,7 +928,7 @@ async def index():
           </div>
         `;
       } catch (err) {
-        container.innerHTML = `<div style="padding: 24px; color: #991B1B;">Failed to load history: ${err.message}</div>`;
+        container.innerHTML = `<div style="padding: 24px; color: #991B1B;">Failed to load history: ${escapeHtml(err.message)}</div>`;
       }
     }
 
@@ -857,29 +968,29 @@ async def index():
         if (!res.ok) throw new Error("Failed to compute diff");
         const diff = await res.json();
 
-        const deltaColor = diff.score_delta > 0 ? '#10B981' : diff.score_delta < 0 ? '#EF4444' : 'var(--text)';
+        const deltaColor = diff.score_delta > 0 ? '#047857' : diff.score_delta < 0 ? '#B91C1C' : 'var(--text)';
         const deltaPrefix = diff.score_delta > 0 ? '+' : '';
         const deltaLabel = diff.score_delta > 0 ? 'Improvement' : diff.score_delta < 0 ? 'Regression' : 'No Change';
 
         let newIssuesHtml = diff.new_issues.length === 0
-          ? '<div style="font-size: 0.85rem; color: #10B981; font-weight: 500;">✓ No new issues introduced.</div>'
-          : diff.new_issues.map(i => `<div class="diff-issue-row diff-issue-regress"><span>⚠</span><span><strong>${i.url}</strong>: ${i.issue}</span></div>`).join("");
+          ? '<div style="font-size: 0.85rem; color: #047857; font-weight: 600;">No new issues introduced.</div>'
+          : diff.new_issues.map(i => `<div class="diff-issue-row diff-issue-regress"><span>!</span><span><strong>${escapeHtml(i.url)}</strong>: ${escapeHtml(i.issue)}</span></div>`).join("");
 
         let resolvedIssuesHtml = diff.resolved_issues.length === 0
           ? '<div style="font-size: 0.85rem; color: var(--text-muted);">No previously flagged issues resolved.</div>'
-          : diff.resolved_issues.map(i => `<div class="diff-issue-row diff-issue-resolved"><span>✓</span><span><strong>${i.url}</strong>: ${i.issue}</span></div>`).join("");
+          : diff.resolved_issues.map(i => `<div class="diff-issue-row diff-issue-resolved"><span>+</span><span><strong>${escapeHtml(i.url)}</strong>: ${escapeHtml(i.issue)}</span></div>`).join("");
 
         diffArea.innerHTML = `
           <div class="diff-card">
             <div class="diff-header">
               <div>
-                <div style="font-size: 0.725rem; font-weight: 800; letter-spacing: 0.08em; text-transform: uppercase; color: var(--ahrefs-blue); margin-bottom: 4px;">AUDIT COMPARISON (DIFF)</div>
-                <div style="font-size: 1.25rem; font-weight: 800; color: var(--text);">${diff.target_url}</div>
+                <div style="font-size: 0.725rem; font-weight: 800; letter-spacing: 0.08em; text-transform: uppercase; color: var(--brand-primary); margin-bottom: 4px;">AUDIT COMPARISON (DIFF)</div>
+                <div style="font-size: 1.25rem; font-weight: 800; color: var(--text);">${escapeHtml(diff.target_url)}</div>
                 <div style="font-size: 0.8rem; color: var(--text-muted); margin-top: 4px;">
-                  Comparing report <span class="mono">${diff.old_report_id}</span> (${diff.old_score}/100) with <span class="mono">${diff.new_report_id}</span> (${diff.new_score}/100)
+                  Comparing report <span class="mono">${escapeHtml(diff.old_report_id)}</span> (${diff.old_score}/100) with <span class="mono">${escapeHtml(diff.new_report_id)}</span> (${diff.new_score}/100)
                 </div>
               </div>
-              <button onclick="document.getElementById('diffArea').style.display='none'" class="btn-outline" style="padding: 6px 14px; font-size: 0.8rem;">Close</button>
+              <button type="button" onclick="document.getElementById('diffArea').style.display='none'" class="btn-outline" style="padding: 8px 16px; font-size: 0.825rem;">Close</button>
             </div>
 
             <div class="diff-stat-grid">
@@ -891,18 +1002,18 @@ async def index():
               <div class="diff-stat-box">
                 <div class="diff-stat-title">Crawled Pages Delta</div>
                 <div class="diff-stat-val">${diff.pages_delta >= 0 ? '+' : ''}${diff.pages_delta}</div>
-                <div style="font-size: 0.775rem; color: var(--text-muted); margin-top: 4px;">${diff.pages_count_old} → ${diff.pages_count_new} pages</div>
+                <div style="font-size: 0.775rem; color: var(--text-muted); margin-top: 4px;">${diff.pages_count_old} to ${diff.pages_count_new} pages</div>
               </div>
               <div class="diff-stat-box">
                 <div class="diff-stat-title">Broken Links Delta</div>
-                <div class="diff-stat-val" style="color: ${diff.broken_delta > 0 ? '#EF4444' : diff.broken_delta < 0 ? '#10B981' : 'var(--text)'};">
+                <div class="diff-stat-val" style="color: ${diff.broken_delta > 0 ? '#B91C1C' : diff.broken_delta < 0 ? '#047857' : 'var(--text)'};">
                   ${diff.broken_delta >= 0 ? '+' : ''}${diff.broken_delta}
                 </div>
-                <div style="font-size: 0.775rem; color: var(--text-muted); margin-top: 4px;">${diff.broken_count_old} → ${diff.broken_count_new} broken</div>
+                <div style="font-size: 0.775rem; color: var(--text-muted); margin-top: 4px;">${diff.broken_count_old} to ${diff.broken_count_new} broken</div>
               </div>
             </div>
 
-            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px; margin-top: 20px;">
+            <div class="diff-issues-grid">
               <div>
                 <div style="font-size: 0.875rem; font-weight: 700; margin-bottom: 8px; color: #991B1B;">New Regressions Detected (${diff.new_issues.length})</div>
                 <div class="diff-issues-list">${newIssuesHtml}</div>
@@ -916,11 +1027,10 @@ async def index():
         `;
         diffArea.scrollIntoView({ behavior: 'smooth' });
       } catch (err) {
-        diffArea.innerHTML = `<div class="loading-card" style="border-color: #FECACA; background: #FEF2F2; color: #991B1B;">${err.message}</div>`;
+        diffArea.innerHTML = `<div class="loading-card" style="border-color: #FECACA; background: #FEF2F2; color: #991B1B;">${escapeHtml(err.message)}</div>`;
       }
     });
 
-    // Run audit handler
     form.addEventListener("submit", async (e) => {
       e.preventDefault();
       btn.disabled = true;
@@ -956,37 +1066,33 @@ async def index():
         }
 
         const score = data.health_score;
-        const strokeColor = score >= 80 ? '#10B981' : score >= 50 ? '#F59E0B' : '#EF4444';
+        const strokeColor = score >= 80 ? '#047857' : score >= 50 ? '#B45309' : '#B91C1C';
         const ratingText = score >= 80 ? 'Excellent' : score >= 50 ? 'Needs Attention' : 'Critical Issues';
         
         const circumference = 364.42;
         const dashOffset = circumference - (score / 100) * circumference;
 
         statusArea.innerHTML = `
-          <!-- Report Header Banner matching reference -->
           <div class="report-banner">
             <div>
               <div class="report-meta-tag">SEO AUDIT REPORT</div>
-              <div class="report-domain">${data.target_url}</div>
+              <div class="report-domain">${escapeHtml(data.target_url)}</div>
               <div class="report-subtitle-meta">
                 <span><strong>${data.pages_crawled}</strong> pages crawled</span>
                 <span>•</span>
                 <span>Duration: <strong>${data.duration_seconds}s</strong></span>
-                <span class="pill-info">Full Site BFS</span>
+                <span class="pill-info">BFS Crawl</span>
               </div>
               <div class="report-buttons">
                 <a href="/api/reports/${data.report_id}/html" target="_blank" class="btn-orange">
                   <span>View Detailed HTML Report</span>
-                  <span>↗</span>
                 </a>
-                <a href="/api/reports/${data.report_id}/csv" class="btn-outline">
+                <a href="/api/reports/${data.report_id}/csv" download class="btn-outline">
                   <span>Download CSV Data</span>
-                  <span>↓</span>
                 </a>
               </div>
             </div>
 
-            <!-- Radial Gauge -->
             <div class="gauge-wrapper">
               <div class="radial-gauge">
                 <svg viewBox="0 0 140 140">
@@ -1007,7 +1113,6 @@ async def index():
             </div>
           </div>
 
-          <!-- Key Metrics Grid -->
           <div style="margin-top: 32px;">
             <div class="section-title">Key Audit Metrics</div>
             <div class="section-desc">Page-level signals, broken links, status codes, and crawl metadata</div>
@@ -1016,46 +1121,45 @@ async def index():
               <div class="metric-card">
                 <div class="card-title">Pages Audited</div>
                 <div class="card-number">${data.pages_crawled}</div>
-                <div class="card-footer" style="color: var(--ahrefs-blue);">100% crawl verified</div>
+                <div class="card-footer" style="color: var(--brand-primary);">Max depth: ${payload.max_pages} pages</div>
               </div>
               <div class="metric-card">
                 <div class="card-title">Broken Links (404)</div>
-                <div class="card-number" style="color: ${data.broken_links_count > 0 ? '#EF4444' : '#10B981'};">
+                <div class="card-number" style="color: ${data.broken_links_count > 0 ? '#B91C1C' : '#047857'};">
                   ${data.broken_links_count}
                 </div>
-                <div class="card-footer" style="color: ${data.broken_links_count > 0 ? '#EF4444' : '#10B981'};">
-                  ${data.broken_links_count === 0 ? '✓ No dead URLs' : 'Requires fixing'}
+                <div class="card-footer" style="color: ${data.broken_links_count > 0 ? '#B91C1C' : '#047857'};">
+                  ${data.broken_links_count === 0 ? 'No dead URLs found' : 'Requires fixing'}
                 </div>
               </div>
               <div class="metric-card">
                 <div class="card-title">Execution Speed</div>
                 <div class="card-number">${data.duration_seconds}s</div>
-                <div class="card-footer" style="color: var(--text-muted);">Async concurrency</div>
+                <div class="card-footer" style="color: var(--text-muted);">HTTP and link checks</div>
               </div>
               <div class="metric-card">
                 <div class="card-title">Export Status</div>
-                <div class="card-number" style="font-size: 1.3rem; color: #10B981;">Ready</div>
-                <div class="card-footer" style="color: var(--text-muted);">HTML & CSV generated</div>
+                <div class="card-number" style="font-size: 1.3rem; color: #047857;">Ready</div>
+                <div class="card-footer" style="color: var(--text-muted);">HTML and CSV generated</div>
               </div>
             </div>
 
-            <!-- Category & Severity Breakdown Panel -->
             <div style="margin-top: 28px;">
               <div class="section-title">Issue Breakdown by Category & Severity</div>
               <div class="section-desc">Prioritized triage across critical crawl errors, on-page tags, images, and directives</div>
 
-              <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 14px; margin-bottom: 20px;">
-                <div class="metric-card" style="border-left: 4px solid #EF4444;">
+              <div class="severity-cards-grid">
+                <div class="metric-card" style="border-left: 4px solid #B91C1C;">
                   <div class="card-title">Critical Errors</div>
-                  <div class="card-number" style="color: ${data.severity_counts.critical > 0 ? '#EF4444' : '#10B981'};">${data.severity_counts.critical}</div>
+                  <div class="card-number" style="color: ${data.severity_counts.critical > 0 ? '#B91C1C' : '#047857'};">${data.severity_counts.critical}</div>
                   <div class="card-footer" style="color: var(--text-muted);">High priority fixes</div>
                 </div>
-                <div class="metric-card" style="border-left: 4px solid #F59E0B;">
+                <div class="metric-card" style="border-left: 4px solid #B45309;">
                   <div class="card-title">Warnings</div>
                   <div class="card-number" style="color: #92400E;">${data.severity_counts.warning}</div>
                   <div class="card-footer" style="color: var(--text-muted);">Optimization recommendations</div>
                 </div>
-                <div class="metric-card" style="border-left: 4px solid #64748B;">
+                <div class="metric-card" style="border-left: 4px solid #475569;">
                   <div class="card-title">Notices</div>
                   <div class="card-number" style="color: #334155;">${data.severity_counts.notice}</div>
                   <div class="card-footer" style="color: var(--text-muted);">Informational advisories</div>
@@ -1088,22 +1192,20 @@ async def index():
           </div>
         `;
 
-        // Refresh recent history
         loadHistory();
       } catch (err) {
         statusArea.innerHTML = `
           <div class="loading-card" style="border-color: #FECACA; background: #FEF2F2;">
             <div style="font-size: 1.1rem; font-weight: 700; color: #991B1B;">Audit Execution Failed</div>
-            <div style="font-size: 0.875rem; color: #B91C1C; margin-top: 6px;">${err.message}</div>
+            <div style="font-size: 0.875rem; color: #B91C1C; margin-top: 6px;">${escapeHtml(err.message)}</div>
           </div>
         `;
       } finally {
         btn.disabled = false;
-        btnText.innerText = "Start Audit";
+        btnText.innerText = "Run Site Audit";
       }
     });
 
-    // Initial history fetch
     document.addEventListener("DOMContentLoaded", loadHistory);
   </script>
 </body>

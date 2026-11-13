@@ -10,11 +10,10 @@ from seo_audit.models import SiteAuditReport, classify_issue
 
 
 def generate_csv_report(report: SiteAuditReport) -> str:
-    """Generate RFC 4180 compliant CSV string with 17 standard columns."""
+    """Generate RFC 4180 compliant CSV string with 22 standard columns."""
     output = io.StringIO()
     writer = csv.writer(output, lineterminator="\n")
 
-    # Write Header
     writer.writerow(
         [
             "URL",
@@ -92,14 +91,14 @@ def generate_csv_report(report: SiteAuditReport) -> str:
 
 
 def generate_html_report(report: SiteAuditReport) -> str:
-    """Generate self-contained, light, professional Semrush/Ahrefs style HTML5 report."""
+    """Generate a self-contained, offline-ready light HTML5 audit report."""
     score = report.health_score
     score_color = (
-        "#10B981"
+        "#047857"
         if score >= 80
-        else "#F59E0B"
+        else "#B45309"
         if score >= 50
-        else "#EF4444"
+        else "#B91C1C"
     )
     score_label = (
         "Excellent"
@@ -127,7 +126,6 @@ def generate_html_report(report: SiteAuditReport) -> str:
     circumference = 351.85
     dash_offset = circumference - (score / 100) * circumference
 
-    # Render pages table rows
     pages_rows = []
     for p in report.pages:
         status_bg = (
@@ -186,17 +184,22 @@ def generate_html_report(report: SiteAuditReport) -> str:
               <td><span class="status-badge" style="background:{status_bg}; border-color:{status_border}; color:{status_color}">{status_text}</span></td>
               <td class="mono font-xs text-muted">{p.response_time_ms:.0f}ms</td>
               <td>
-                <div class="cell-title font-medium">{html.escape(p.title or '—')}</div>
+                <div class="cell-title font-medium">{html.escape(p.title or '-')}</div>
                 <div class="text-muted font-xxs">{p.title_length} characters</div>
               </td>
               <td class="text-center font-sm font-semibold">{len(p.h1_list)}</td>
-              <td class="mono font-xxs text-muted cell-url">{html.escape(p.canonical_url or '—')}</td>
+              <td class="mono font-xxs text-muted cell-url">{html.escape(p.canonical_url or '-')}</td>
               <td><div class="tags-flex">{issues_html}</div></td>
             </tr>
             """
         )
 
-    # Render broken links rows
+    empty_pages = (
+        '<tr><td colspan="7" class="empty-state empty-neutral">No internal pages were crawled in this audit.</td></tr>'
+        if not pages_rows
+        else "".join(pages_rows)
+    )
+
     broken_rows = []
     for bl in report.broken_links:
         ext_badge = (
@@ -210,7 +213,7 @@ def generate_html_report(report: SiteAuditReport) -> str:
               <td class="mono font-xs cell-url">{html.escape(bl.source_url)}</td>
               <td class="mono font-xs cell-url font-semibold text-danger">{html.escape(bl.target_url)}</td>
               <td>{ext_badge}</td>
-              <td class="font-xs">{html.escape(bl.anchor_text or '—')}</td>
+              <td class="font-xs">{html.escape(bl.anchor_text or '-')}</td>
               <td><span class="status-badge status-err">{html.escape(bl.error or str(bl.status_code))}</span></td>
             </tr>
             """
@@ -239,9 +242,6 @@ def generate_html_report(report: SiteAuditReport) -> str:
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>SEO Audit Report - {html.escape(report.target_url)}</title>
-  <link rel="preconnect" href="https://fonts.googleapis.com">
-  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
   <style>
     :root {{
       --bg: #F8FAFC;
@@ -250,14 +250,14 @@ def generate_html_report(report: SiteAuditReport) -> str:
       --border: #E2E8F0;
       --border-subtle: #EDF2F7;
       --text: #0F172A;
-      --text-muted: #64748B;
-      --text-light: #94A3B8;
-      
-      --ahrefs-blue: #005BFF;
-      --semrush-orange: #FF642D;
-      --green: #10B981;
-      --amber: #F59E0B;
-      --red: #EF4444;
+      --text-muted: #475569;
+
+      --brand-primary: #0052CC;
+      --brand-primary-hover: #003E99;
+      --brand-accent: #C2410C;
+      --green: #047857;
+      --amber: #B45309;
+      --red: #B91C1C;
 
       --radius-sm: 6px;
       --radius-md: 10px;
@@ -269,7 +269,7 @@ def generate_html_report(report: SiteAuditReport) -> str:
 
     * {{ box-sizing: border-box; margin: 0; padding: 0; }}
     body {{
-      font-family: 'Plus Jakarta Sans', system-ui, -apple-system, sans-serif;
+      font-family: Inter, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
       background-color: var(--bg);
       color: var(--text);
       line-height: 1.5;
@@ -278,7 +278,6 @@ def generate_html_report(report: SiteAuditReport) -> str:
     }}
     .container {{ max-width: 1240px; margin: 0 auto; }}
 
-    /* Semrush / Ahrefs Style Top Header Banner */
     .report-header-card {{
       background: var(--surface);
       border: 1px solid var(--border);
@@ -296,7 +295,7 @@ def generate_html_report(report: SiteAuditReport) -> str:
       font-weight: 800;
       letter-spacing: 0.08em;
       text-transform: uppercase;
-      color: var(--ahrefs-blue);
+      color: var(--brand-primary);
       margin-bottom: 8px;
     }}
     h1.target-url {{
@@ -360,19 +359,21 @@ def generate_html_report(report: SiteAuditReport) -> str:
     .gauge-inner {{
       position: absolute;
       text-align: center;
+      padding: 0 14px;
     }}
     .gauge-val {{
-      font-size: 2.25rem;
+      font-size: 1.6rem;
       font-weight: 800;
-      letter-spacing: -0.04em;
+      letter-spacing: -0.03em;
       line-height: 1;
     }}
     .gauge-sub {{
-      font-size: 0.725rem;
+      font-size: 0.6rem;
       font-weight: 700;
       text-transform: uppercase;
-      letter-spacing: 0.05em;
-      margin-top: 3px;
+      letter-spacing: 0.04em;
+      line-height: 1.15;
+      margin-top: 4px;
       color: var(--text-muted);
     }}
 
@@ -472,7 +473,7 @@ def generate_html_report(report: SiteAuditReport) -> str:
     tr:last-child td {{ border-bottom: none; }}
     tr:hover td {{ background: #F8FAFC; }}
 
-    .mono {{ font-family: 'JetBrains Mono', ui-monospace, monospace; }}
+    .mono {{ font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; }}
     .font-sm {{ font-size: 0.875rem; }}
     .font-xs {{ font-size: 0.8rem; }}
     .font-xxs {{ font-size: 0.725rem; }}
@@ -495,11 +496,18 @@ def generate_html_report(report: SiteAuditReport) -> str:
       white-space: nowrap;
     }}
     .table-link {{
-      color: var(--ahrefs-blue);
+      color: var(--brand-primary);
       text-decoration: none;
     }}
     .table-link:hover {{
+      color: var(--brand-primary-hover);
       text-decoration: underline;
+    }}
+    .table-link:focus-visible,
+    .tab-btn:focus-visible,
+    .sev-pill-btn:focus-visible {{
+      outline: 2px solid var(--brand-primary);
+      outline-offset: 2px;
     }}
 
     .status-badge {{
@@ -523,8 +531,8 @@ def generate_html_report(report: SiteAuditReport) -> str:
       font-size: 0.725rem;
       font-weight: 600;
     }}
-    .scope-int {{ background: #F1F5F9; color: #475569; }}
-    .scope-ext {{ background: #EFF6FF; color: var(--ahrefs-blue); }}
+    .scope-int {{ background: #F1F5F9; color: #334155; }}
+    .scope-ext {{ background: #EFF6FF; color: var(--brand-primary); }}
 
     .tags-flex {{
       display: flex;
@@ -558,11 +566,12 @@ def generate_html_report(report: SiteAuditReport) -> str:
     .tabs-group {{
       display: flex;
       flex-wrap: wrap;
-      gap: 4px;
+      gap: 8px;
     }}
     .tab-btn {{
-      padding: 6px 12px;
-      font-size: 0.775rem;
+      min-height: 44px;
+      padding: 8px 14px;
+      font-size: 0.8rem;
       font-weight: 600;
       border-radius: var(--radius-sm);
       border: 1px solid transparent;
@@ -570,26 +579,31 @@ def generate_html_report(report: SiteAuditReport) -> str:
       color: var(--text-muted);
       cursor: pointer;
       font-family: inherit;
-      transition: all 0.15s ease;
+      transition: background-color 0.15s ease, color 0.15s ease, border-color 0.15s ease;
     }}
     .tab-btn:hover {{
       color: var(--text);
       background: var(--surface-subtle);
     }}
+    .tab-btn:active {{
+      transform: translateY(1px);
+    }}
     .tab-btn.active {{
       background: #EFF6FF;
       border-color: #BFDBFE;
-      color: var(--ahrefs-blue);
+      color: var(--brand-primary);
       font-weight: 700;
     }}
     .severity-group {{
       display: flex;
+      flex-wrap: wrap;
       align-items: center;
-      gap: 6px;
+      gap: 8px;
     }}
     .sev-pill-btn {{
-      padding: 4px 10px;
-      font-size: 0.725rem;
+      min-height: 44px;
+      padding: 8px 14px;
+      font-size: 0.775rem;
       font-weight: 600;
       border-radius: 20px;
       border: 1px solid var(--border);
@@ -597,11 +611,14 @@ def generate_html_report(report: SiteAuditReport) -> str:
       color: var(--text-muted);
       cursor: pointer;
       font-family: inherit;
-      transition: all 0.15s ease;
+      transition: background-color 0.15s ease, color 0.15s ease, border-color 0.15s ease;
     }}
     .sev-pill-btn:hover {{
       border-color: var(--text-muted);
       color: var(--text);
+    }}
+    .sev-pill-btn:active {{
+      transform: translateY(1px);
     }}
     .sev-pill-btn.active {{
       font-weight: 700;
@@ -627,21 +644,38 @@ def generate_html_report(report: SiteAuditReport) -> str:
 
     .empty-state {{
       text-align: center;
-      padding: 36px;
+      padding: 36px 20px;
       color: var(--green);
       font-size: 0.925rem;
       font-weight: 600;
     }}
+    .empty-state.empty-neutral {{
+      color: var(--text-muted);
+    }}
 
     @media (max-width: 900px) {{
-      .report-header-card {{ grid-template-columns: 1fr; }}
+      body {{ padding: 28px 18px 64px; }}
+      .report-header-card {{ grid-template-columns: 1fr; padding: 28px; gap: 24px; }}
       .stats-grid {{ grid-template-columns: 1fr 1fr; }}
+      .panel-header {{ flex-wrap: wrap; gap: 8px; padding: 18px 20px; }}
+      .filter-bar {{ padding: 12px 20px; }}
+    }}
+    @media (max-width: 560px) {{
+      body {{ padding: 16px 12px 48px; }}
+      .report-header-card {{ padding: 20px 18px; gap: 20px; }}
+      h1.target-url {{ font-size: 1.45rem; }}
+      .stats-grid {{ grid-template-columns: 1fr; }}
+      .stat-box {{ padding: 18px; }}
+      .panel-header {{ padding: 16px; }}
+      .filter-bar {{ padding: 12px 16px; }}
+    }}
+    @media (prefers-reduced-motion: reduce) {{
+      *, *::before, *::after {{ transition: none !important; animation: none !important; }}
     }}
   </style>
 </head>
 <body>
   <div class="container">
-    <!-- Header Banner Card (Semrush/Ahrefs Light Style) -->
     <header class="report-header-card">
       <div>
         <div class="eyebrow">SEO Audit Report</div>
@@ -653,7 +687,6 @@ def generate_html_report(report: SiteAuditReport) -> str:
         </div>
       </div>
 
-      <!-- Radial Circular Health Gauge -->
       <div class="gauge-box">
         <div class="circle-gauge">
           <svg viewBox="0 0 136 136">
@@ -672,7 +705,7 @@ def generate_html_report(report: SiteAuditReport) -> str:
       </div>
     </header>
 
-    <!-- 4 Stats Cards Grid -->
+    <main>
     <div class="stats-grid">
       <div class="stat-box">
         <div class="stat-label">Total Pages Crawled</div>
@@ -681,12 +714,12 @@ def generate_html_report(report: SiteAuditReport) -> str:
       </div>
       <div class="stat-box">
         <div class="stat-label">Total Issues Flagged</div>
-        <div class="stat-number" style="color: {'#EF4444' if total_issues > 0 else 'var(--text)'};">{total_issues}</div>
+        <div class="stat-number" style="color: {'#B91C1C' if total_issues > 0 else 'var(--text)'};">{total_issues}</div>
         <div class="stat-caption">Includes {total_missing_alt} image alt issues</div>
       </div>
       <div class="stat-box">
         <div class="stat-label">Broken Links (404/5xx)</div>
-        <div class="stat-number" style="color: {'#EF4444' if total_broken > 0 else '#10B981'};">{total_broken}</div>
+        <div class="stat-number" style="color: {'#B91C1C' if total_broken > 0 else '#047857'};">{total_broken}</div>
         <div class="stat-caption">{'Requires dead link fixes' if total_broken > 0 else 'All links validated safe'}</div>
       </div>
       <div class="stat-box">
@@ -697,7 +730,6 @@ def generate_html_report(report: SiteAuditReport) -> str:
       </div>
     </div>
 
-    <!-- Audited Internal Pages Table -->
     <div class="panel-card">
       <div class="panel-header">
         <div class="panel-title">Audited Internal Pages</div>
@@ -705,19 +737,19 @@ def generate_html_report(report: SiteAuditReport) -> str:
       </div>
       <div class="filter-bar">
         <div class="tabs-group">
-          <button class="tab-btn active" data-cat="all">All Pages ({len(report.pages)})</button>
-          <button class="tab-btn" data-cat="crawlability">Crawlability ({cat_counts['crawlability']})</button>
-          <button class="tab-btn" data-cat="on_page">On-Page ({cat_counts['on_page']})</button>
-          <button class="tab-btn" data-cat="images">Images ({cat_counts['images']})</button>
-          <button class="tab-btn" data-cat="social">Social & Schema ({cat_counts['social']})</button>
-          <button class="tab-btn" data-cat="directives">Directives ({cat_counts['directives']})</button>
+          <button type="button" class="tab-btn active" aria-pressed="true" data-cat="all">All Pages ({len(report.pages)})</button>
+          <button type="button" class="tab-btn" aria-pressed="false" data-cat="crawlability">Crawlability ({cat_counts['crawlability']})</button>
+          <button type="button" class="tab-btn" aria-pressed="false" data-cat="on_page">On-Page ({cat_counts['on_page']})</button>
+          <button type="button" class="tab-btn" aria-pressed="false" data-cat="images">Images ({cat_counts['images']})</button>
+          <button type="button" class="tab-btn" aria-pressed="false" data-cat="social">Social & Schema ({cat_counts['social']})</button>
+          <button type="button" class="tab-btn" aria-pressed="false" data-cat="directives">Directives ({cat_counts['directives']})</button>
         </div>
         <div class="severity-group">
           <span style="font-size: 0.725rem; font-weight: 700; color: var(--text-muted); text-transform: uppercase;">Severity:</span>
-          <button class="sev-pill-btn active" data-sev="all">All</button>
-          <button class="sev-pill-btn sev-crit" data-sev="critical">Critical ({sev_counts['critical']})</button>
-          <button class="sev-pill-btn sev-warn" data-sev="warning">Warning ({sev_counts['warning']})</button>
-          <button class="sev-pill-btn sev-info" data-sev="notice">Notice ({sev_counts['notice']})</button>
+          <button type="button" class="sev-pill-btn active" aria-pressed="true" data-sev="all">All</button>
+          <button type="button" class="sev-pill-btn sev-crit" aria-pressed="false" data-sev="critical">Critical ({sev_counts['critical']})</button>
+          <button type="button" class="sev-pill-btn sev-warn" aria-pressed="false" data-sev="warning">Warning ({sev_counts['warning']})</button>
+          <button type="button" class="sev-pill-btn sev-info" aria-pressed="false" data-sev="notice">Notice ({sev_counts['notice']})</button>
         </div>
       </div>
       <div class="table-responsive">
@@ -734,16 +766,15 @@ def generate_html_report(report: SiteAuditReport) -> str:
             </tr>
           </thead>
           <tbody>
-            {"".join(pages_rows)}
+            {empty_pages}
             <tr id="noMatchesRow" style="display: none;">
-              <td colspan="7" class="empty-state">No pages match the active category and severity filters.</td>
+              <td colspan="7" class="empty-state empty-neutral">No pages match the active category and severity filters.</td>
             </tr>
           </tbody>
         </table>
       </div>
     </div>
 
-    <!-- Broken Links Table -->
     <div class="panel-card">
       <div class="panel-header">
         <div class="panel-title">Broken Links (404 & Dead Endpoints)</div>
@@ -766,6 +797,7 @@ def generate_html_report(report: SiteAuditReport) -> str:
         </table>
       </div>
     </div>
+    </main>
   </div>
 
   <script>
@@ -774,6 +806,7 @@ def generate_html_report(report: SiteAuditReport) -> str:
 
     function applyFilters() {{
       const rows = document.querySelectorAll('.page-row');
+      if (rows.length === 0) return;
       let visible = 0;
       rows.forEach(r => {{
         const cats = (r.getAttribute('data-categories') || '').split(' ');
@@ -798,8 +831,12 @@ def generate_html_report(report: SiteAuditReport) -> str:
 
     document.querySelectorAll('.tab-btn').forEach(btn => {{
       btn.addEventListener('click', () => {{
-        document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+        document.querySelectorAll('.tab-btn').forEach(b => {{
+          b.classList.remove('active');
+          b.setAttribute('aria-pressed', 'false');
+        }});
         btn.classList.add('active');
+        btn.setAttribute('aria-pressed', 'true');
         activeCat = btn.getAttribute('data-cat');
         applyFilters();
       }});
@@ -807,8 +844,12 @@ def generate_html_report(report: SiteAuditReport) -> str:
 
     document.querySelectorAll('.sev-pill-btn').forEach(btn => {{
       btn.addEventListener('click', () => {{
-        document.querySelectorAll('.sev-pill-btn').forEach(b => b.classList.remove('active'));
+        document.querySelectorAll('.sev-pill-btn').forEach(b => {{
+          b.classList.remove('active');
+          b.setAttribute('aria-pressed', 'false');
+        }});
         btn.classList.add('active');
+        btn.setAttribute('aria-pressed', 'true');
         activeSev = btn.getAttribute('data-sev');
         applyFilters();
       }});
