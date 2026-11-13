@@ -17,7 +17,10 @@ from seo_audit.reporters import generate_csv_report, generate_html_report
 
 def run_audit_command(args: argparse.Namespace) -> int:
     """Execute audit via terminal and print/save reports."""
-    print(f"Starting SEO audit for {args.target_url} (max pages: {args.max_pages})...")
+    print(
+        f"Starting SEO audit for {args.target_url} (max pages: {args.max_pages})...",
+        file=sys.stderr,
+    )
 
     try:
         report = asyncio.run(
@@ -46,6 +49,8 @@ def run_audit_command(args: argparse.Namespace) -> int:
 
     if args.json:
         print(json.dumps(asdict(report), indent=2))
+        if getattr(args, "fail_under", None) is not None and report.health_score < args.fail_under:
+            return 1
         return 0
 
     print("\n" + "=" * 58)
@@ -76,6 +81,12 @@ def run_audit_command(args: argparse.Namespace) -> int:
             f.write(html_content)
         print(f"HTML report saved to: {args.html}")
 
+    if getattr(args, "fail_under", None) is not None and report.health_score < args.fail_under:
+        print(
+            f"Quality gate failed: health score {report.health_score} < {args.fail_under}",
+            file=sys.stderr,
+        )
+        return 1
     return 0
 
 
@@ -165,6 +176,14 @@ def run_compare_command(args: argparse.Namespace) -> int:
             print(f"  [*] {mc}")
 
     print("=" * 62 + "\n")
+    if getattr(args, "fail_on_regression", False) and (
+        diff.score_delta < 0 or diff.new_issues or diff.new_broken_links
+    ):
+        print(
+            "Regression gate failed: score dropped or new issues/broken links detected.",
+            file=sys.stderr,
+        )
+        return 1
     return 0
 
 
@@ -223,6 +242,12 @@ def add_audit_flags(parser: argparse.ArgumentParser) -> None:
     )
     parser.add_argument(
         "--json", action="store_true", help="Output audit report as JSON to stdout"
+    )
+    parser.add_argument(
+        "--fail-under",
+        type=int,
+        default=None,
+        help="Exit with code 1 if health score is below this threshold",
     )
 
 

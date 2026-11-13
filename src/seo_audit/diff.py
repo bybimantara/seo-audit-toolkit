@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import re
 from dataclasses import asdict, dataclass, field
 from typing import Any
 
@@ -39,32 +40,53 @@ class AuditDiffReport:
         return asdict(self)
 
 
+def normalize_issue_key(issue: str) -> str:
+    """Normalize dynamic counts and parenthetical details for stable diffing."""
+    cleaned = re.sub(r"\s*\([^)]*\)", "", issue)
+    return re.sub(r"\b\d+\b", "N", cleaned).strip()
+
+
 def compare_reports(
     old_report: SiteAuditReport, new_report: SiteAuditReport
 ) -> AuditDiffReport:
     """Compare two audit reports to compute score delta, regressions, and resolved issues."""
     old_pages_urls = {p.url for p in old_report.pages}
     new_pages_urls = {p.url for p in new_report.pages}
+    common_urls = old_pages_urls & new_pages_urls
 
     new_pages = sorted(new_pages_urls - old_pages_urls)
     removed_pages = sorted(old_pages_urls - new_pages_urls)
 
-    # Issue comparison by (url, issue)
-    old_issues_set = {
-        (p.url, issue) for p in old_report.pages for issue in p.issues
+    # Issue comparison using normalized keys:
+    # - new_issues checks ALL new_report pages (so regressions on new pages are caught)
+    # - resolved_issues checks ONLY common_urls (so uncrawled pages aren't falsely marked Resolved)
+    old_norm_set = {
+        (p.url, normalize_issue_key(issue))
+        for p in old_report.pages
+        for issue in p.issues
     }
-    new_issues_set = {
-        (p.url, issue) for p in new_report.pages for issue in p.issues
+    new_norm_set = {
+        (p.url, normalize_issue_key(issue))
+        for p in new_report.pages
+        for issue in p.issues
     }
 
     new_issues = [
-        {"url": url, "issue": issue}
-        for (url, issue) in sorted(new_issues_set - old_issues_set)
+        {"url": p.url, "issue": issue}
+        for p in new_report.pages
+        for issue in p.issues
+        if (p.url, normalize_issue_key(issue)) not in old_norm_set
     ]
+    new_issues.sort(key=lambda x: (x["url"], x["issue"]))
+
     resolved_issues = [
-        {"url": url, "issue": issue}
-        for (url, issue) in sorted(old_issues_set - new_issues_set)
+        {"url": p.url, "issue": issue}
+        for p in old_report.pages
+        if p.url in common_urls
+        for issue in p.issues
+        if (p.url, normalize_issue_key(issue)) not in new_norm_set
     ]
+    resolved_issues.sort(key=lambda x: (x["url"], x["issue"]))
 
     # Broken links comparison
     old_bl_map = {
@@ -78,7 +100,9 @@ def compare_reports(
         asdict(bl) for key, bl in new_bl_map.items() if key not in old_bl_map
     ]
     fixed_broken = [
-        asdict(bl) for key, bl in old_bl_map.items() if key not in new_bl_map
+        asdict(bl)
+        for key, bl in old_bl_map.items()
+        if key not in new_bl_map and bl.source_url in common_urls
     ]
 
     # Meta directive changes
