@@ -54,7 +54,7 @@ def run_audit_command(args: argparse.Namespace) -> int:
         return 0
 
     print("\n" + "=" * 58)
-    print(f"SEO AUDIT COMPLETE — Health Score: {report.health_score}/100")
+    print(f"SEO AUDIT COMPLETE - Health Score: {report.health_score}/100")
     print(f"Report ID: {report.report_id}")
     print(f"Duration: {report.duration_seconds}s | Pages Crawled: {len(report.pages)}")
     print(f"Broken Links: {len(report.broken_links)}")
@@ -137,7 +137,7 @@ def run_compare_command(args: argparse.Namespace) -> int:
     )
 
     print("\n" + "=" * 62)
-    print(f"SEO AUDIT COMPARISON (DIFF) — {diff.target_url}")
+    print(f"SEO AUDIT COMPARISON (DIFF) - {diff.target_url}")
     print(f"Base Report   : {diff.old_report_id} ({diff.old_score}/100) on {diff.old_audited_at[:19]}")
     print(f"Current Report: {diff.new_report_id} ({diff.new_score}/100) on {diff.new_audited_at[:19]}")
     print("-" * 62)
@@ -254,7 +254,6 @@ def add_audit_flags(parser: argparse.ArgumentParser) -> None:
 def main(argv: list[str] | None = None) -> int:
     args_list = list(sys.argv[1:] if argv is None else argv)
 
-    # 1. If 'serve' subcommand is passed
     if args_list and args_list[0] == "serve":
         serve_parser = argparse.ArgumentParser(
             prog="seo-audit serve", description="Run the Web Dashboard server"
@@ -271,7 +270,6 @@ def main(argv: list[str] | None = None) -> int:
         parsed_serve = serve_parser.parse_args(args_list[1:])
         return run_serve_command(parsed_serve)
 
-    # 2. If 'history' subcommand is passed
     if args_list and args_list[0] == "history":
         hist_parser = argparse.ArgumentParser(
             prog="seo-audit history", description="View recent audit reports"
@@ -285,7 +283,6 @@ def main(argv: list[str] | None = None) -> int:
         parsed_hist = hist_parser.parse_args(args_list[1:])
         return run_history_command(parsed_hist)
 
-    # 3. If 'compare' subcommand is passed
     if args_list and args_list[0] == "compare":
         comp_parser = argparse.ArgumentParser(
             prog="seo-audit compare", description="Compare two audit reports"
@@ -298,7 +295,6 @@ def main(argv: list[str] | None = None) -> int:
         parsed_comp = comp_parser.parse_args(args_list[1:])
         return run_compare_command(parsed_comp)
 
-    # 4. Normal audit mode (either 'seo-audit <url> [options]' or 'seo-audit audit <url> [options]')
     if args_list and args_list[0] == "audit":
         args_list = args_list[1:]
 
