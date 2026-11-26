@@ -13,7 +13,7 @@ import httpx
 
 from seo_audit.analyzer import (
     analyze_page_html,
-    calculate_page_score,
+    detect_cross_page_duplicates,
     is_same_site,
     parse_ai_bot_rules,
     parse_robots_txt,
@@ -277,16 +277,11 @@ async def crawl_site(
 
         semaphore = asyncio.Semaphore(concurrency)
 
-        while queue and len(visited_urls) < max_pages:
-            current_url = queue.popleft()
-            if current_url in visited_urls:
-                continue
-            visited_urls.add(current_url)
-
+        async def _fetch_and_audit(url: str) -> PageAudit:
             page_start = time.perf_counter()
             initial_status = None
             final_status = None
-            final_url = current_url
+            final_url = url
             html_text = ""
             content_type = ""
             redirect_chain: list[RedirectHop] = []
@@ -295,13 +290,13 @@ async def crawl_site(
                 async with semaphore:
                     # Non-redirect first to capture initial status
                     resp_initial = await client.get(
-                        current_url, timeout=timeout, follow_redirects=False
+                        url, timeout=timeout, follow_redirects=False
                     )
                     initial_status = resp_initial.status_code
 
                     if resp_initial.is_redirect:
                         resp_final = await client.get(
-                            current_url, timeout=timeout, follow_redirects=True
+                            url, timeout=timeout, follow_redirects=True
                         )
                         final_status = resp_final.status_code
                         final_url = str(resp_final.url)
@@ -327,7 +322,7 @@ async def crawl_site(
             if html_text and "text/html" in content_type:
                 audit = analyze_page_html(
                     html=html_text,
-                    requested_url=current_url,
+                    requested_url=url,
                     final_url=final_url,
                     status_code=final_status,
                     initial_status_code=initial_status,
@@ -339,21 +334,15 @@ async def crawl_site(
                     audit.issues.append(
                         f"Redirect chain too long ({len(redirect_chain)} hops)"
                     )
-                for link_url, _ in audit.internal_links:
-                    if (
-                        link_url not in visited_urls
-                        and link_url not in queue
-                        and len(visited_urls) + len(queue) < max_pages * 2
-                    ):
-                        queue.append(link_url)
+                return audit
             else:
                 issues = []
                 if final_status is None:
                     issues.append("Failed to connect or request timed out")
                 elif final_status >= 400:
                     issues.append(f"Page returned HTTP error {final_status}")
-                audit = PageAudit(
-                    url=current_url,
+                return PageAudit(
+                    url=url,
                     final_url=final_url,
                     initial_status_code=initial_status,
                     status_code=final_status,
@@ -363,7 +352,38 @@ async def crawl_site(
                     page_score=0 if final_status is None or final_status >= 400 else 100,
                 )
 
-            pages_audit.append(audit)
+        while queue and len(visited_urls) < max_pages:
+            # Pop a batch of URLs respecting concurrency and remaining page allowance
+            remaining = max_pages - len(visited_urls)
+            batch_size = min(len(queue), concurrency, remaining)
+            batch_urls: list[str] = []
+
+            while queue and len(batch_urls) < batch_size:
+                candidate = queue.popleft()
+                if candidate not in visited_urls:
+                    visited_urls.add(candidate)
+                    batch_urls.append(candidate)
+
+            if not batch_urls:
+                continue
+
+            batch_audits = await asyncio.gather(
+                *[_fetch_and_audit(u) for u in batch_urls]
+            )
+
+            for audit in batch_audits:
+                pages_audit.append(audit)
+                for link_url, _ in audit.internal_links:
+                    if (
+                        link_url not in visited_urls
+                        and link_url not in queued_urls
+                        and len(visited_urls) + len(queued_urls) < max_pages * 2
+                    ):
+                        queued_urls.add(link_url)
+                        queue.append(link_url)
+
+        # Detect cross-page duplicate titles and duplicate H1s across all crawled pages
+        detect_cross_page_duplicates(pages_audit)
 
         link_occurrences: dict[str, list[tuple[str, str, bool]]] = {}
         for page in pages_audit:

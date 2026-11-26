@@ -127,7 +127,7 @@ def generate_html_report(report: SiteAuditReport) -> str:
     dash_offset = circumference - (score / 100) * circumference
 
     pages_rows = []
-    for p in report.pages:
+    for idx, p in enumerate(report.pages):
         status_bg = (
             "#ECFDF5"
             if p.status_code and p.status_code < 300
@@ -175,10 +175,26 @@ def generate_html_report(report: SiteAuditReport) -> str:
         cat_attr = " ".join(sorted(page_categories)) or "healthy"
         sev_attr = " ".join(sorted(page_severities)) or "healthy"
 
+        # Drill-down details construction
+        h1_display = ", ".join(html.escape(h) for h in p.h1_list) if p.h1_list else "<em>None</em>"
+        h2_display = f"{len(p.h2_list)} detected" + (f" ({', '.join(html.escape(h) for h in p.h2_list[:3])}...)" if p.h2_list else "")
+        desc_display = html.escape(p.meta_description) if p.meta_description else "<em>None</em>"
+        redirect_info = ""
+        if p.redirect_chain:
+            hops_str = " -> ".join(f"{h.status_code} ({html.escape(h.url)})" for h in p.redirect_chain)
+            redirect_info = f'<div class="drill-item"><span class="drill-label">Redirect Chain:</span> <span class="mono font-xxs">{hops_str}</span></div>'
+
+        image_info = f"{len(p.image_issues)} issues" if p.image_issues else "0 issues"
+        schema_info = "Present (Valid)" if (p.has_json_ld and p.json_ld_valid) else "Present (Invalid JSON)" if p.has_json_ld else "None"
+
+        drill_row_id = f"drill-{idx}"
         pages_rows.append(
             f"""
-            <tr class="page-row" data-categories="{cat_attr}" data-severities="{sev_attr}">
+            <tr class="page-row" data-categories="{cat_attr}" data-severities="{sev_attr}" data-drill-id="{drill_row_id}">
               <td class="mono font-xs cell-url">
+                <button type="button" class="btn-toggle-drill" aria-expanded="false" aria-controls="{drill_row_id}" title="Toggle detailed view">
+                  <span class="drill-icon">▶</span>
+                </button>
                 <a href="{html.escape(p.url)}" target="_blank" class="table-link font-medium">{html.escape(p.url)}</a>
               </td>
               <td><span class="status-badge" style="background:{status_bg}; border-color:{status_border}; color:{status_color}">{status_text}</span></td>
@@ -190,6 +206,21 @@ def generate_html_report(report: SiteAuditReport) -> str:
               <td class="text-center font-sm font-semibold">{len(p.h1_list)}</td>
               <td class="mono font-xxs text-muted cell-url">{html.escape(p.canonical_url or '-')}</td>
               <td><div class="tags-flex">{issues_html}</div></td>
+            </tr>
+            <tr id="{drill_row_id}" class="drill-down-row" style="display: none;" data-parent-cat="{cat_attr}" data-parent-sev="{sev_attr}">
+              <td colspan="7">
+                <div class="drill-down-content">
+                  <div class="drill-grid">
+                    <div class="drill-item"><span class="drill-label">Meta Description:</span> <span>{desc_display} ({p.description_length} chars)</span></div>
+                    <div class="drill-item"><span class="drill-label">H1 Headings:</span> <span>{h1_display}</span></div>
+                    <div class="drill-item"><span class="drill-label">H2 Headings:</span> <span>{h2_display}</span></div>
+                    <div class="drill-item"><span class="drill-label">Image Status:</span> <span>{image_info}</span></div>
+                    <div class="drill-item"><span class="drill-label">Schema / JSON-LD:</span> <span>{schema_info}</span></div>
+                    <div class="drill-item"><span class="drill-label">Internal / External Links:</span> <span>{p.internal_links_count} internal / {p.external_links_count} external</span></div>
+                  </div>
+                  {redirect_info}
+                </div>
+              </td>
             </tr>
             """
         )
@@ -504,10 +535,59 @@ def generate_html_report(report: SiteAuditReport) -> str:
       text-decoration: underline;
     }}
     .table-link:focus-visible,
+    .btn-toggle-drill:focus-visible,
     .tab-btn:focus-visible,
     .sev-pill-btn:focus-visible {{
       outline: 2px solid var(--brand-primary);
       outline-offset: 2px;
+    }}
+
+    .btn-toggle-drill {{
+      background: transparent;
+      border: 1px solid var(--border-subtle);
+      border-radius: var(--radius-sm);
+      cursor: pointer;
+      color: var(--text-muted);
+      padding: 2px 6px;
+      margin-right: 6px;
+      font-size: 0.65rem;
+      vertical-align: middle;
+      transition: background 0.15s ease, color 0.15s ease;
+    }}
+    .btn-toggle-drill:hover {{
+      background: var(--surface-subtle);
+      color: var(--text);
+    }}
+    .btn-toggle-drill.expanded .drill-icon {{
+      display: inline-block;
+      transform: rotate(90deg);
+    }}
+
+    .drill-down-row td {{
+      background: #F8FAFC;
+      border-bottom: 1px solid var(--border-subtle);
+      padding: 16px 24px;
+    }}
+    .drill-down-content {{
+      font-size: 0.8rem;
+    }}
+    .drill-grid {{
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+      gap: 10px 20px;
+    }}
+    .drill-item {{
+      display: flex;
+      gap: 6px;
+      align-items: baseline;
+    }}
+    .drill-label {{
+      font-weight: 700;
+      color: var(--text-muted);
+      font-size: 0.725rem;
+      text-transform: uppercase;
+      letter-spacing: 0.04em;
+      white-space: nowrap;
     }}
 
     .status-badge {{
@@ -820,6 +900,16 @@ def generate_html_report(report: SiteAuditReport) -> str:
           visible++;
         }} else {{
           r.style.display = 'none';
+          const drillId = r.getAttribute('data-drill-id');
+          if (drillId) {{
+            const dRow = document.getElementById(drillId);
+            if (dRow) dRow.style.display = 'none';
+            const btn = r.querySelector('.btn-toggle-drill');
+            if (btn) {{
+              btn.classList.remove('expanded');
+              btn.setAttribute('aria-expanded', 'false');
+            }}
+          }}
         }}
       }});
 
@@ -828,6 +918,26 @@ def generate_html_report(report: SiteAuditReport) -> str:
         noMatch.style.display = visible === 0 ? '' : 'none';
       }}
     }}
+
+    document.querySelectorAll('.btn-toggle-drill').forEach(btn => {{
+      btn.addEventListener('click', (e) => {{
+        e.stopPropagation();
+        const targetId = btn.getAttribute('aria-controls');
+        const drillRow = document.getElementById(targetId);
+        if (!drillRow) return;
+
+        const isExpanded = btn.classList.contains('expanded');
+        if (isExpanded) {{
+          drillRow.style.display = 'none';
+          btn.classList.remove('expanded');
+          btn.setAttribute('aria-expanded', 'false');
+        }} else {{
+          drillRow.style.display = '';
+          btn.classList.add('expanded');
+          btn.setAttribute('aria-expanded', 'true');
+        }}
+      }});
+    }});
 
     document.querySelectorAll('.tab-btn').forEach(btn => {{
       btn.addEventListener('click', () => {{

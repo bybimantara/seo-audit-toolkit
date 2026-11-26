@@ -95,3 +95,58 @@ async def test_crawl_site_with_mock_transport():
             "https://external-broken.com/dead" in broken_targets
             or "https://testsite.com/broken-internal" in broken_targets
         )
+
+
+@pytest.mark.asyncio
+async def test_crawl_site_cross_page_duplicates():
+    # Setup mock with duplicate title and H1 across 2 pages
+    def handler(request: httpx.Request) -> httpx.Response:
+        url_str = str(request.url)
+        if url_str == "https://dupesite.com/robots.txt":
+            return httpx.Response(200, text="User-agent: *\nAllow: /")
+        if url_str == "https://dupesite.com/sitemap.xml":
+            return httpx.Response(404, text="Not Found")
+        if url_str in ("https://dupesite.com/", "https://dupesite.com"):
+            html = """
+            <!DOCTYPE html>
+            <html>
+              <head>
+                <title>Shared Exact Title - Website Name Here</title>
+                <meta name="description" content="Valid meta description length that gives adequate context about the site." />
+              </head>
+              <body>
+                <h1>Identical Page Heading</h1>
+                <a href="/page2">Page 2</a>
+              </body>
+            </html>
+            """
+            return httpx.Response(200, text=html, headers={"content-type": "text/html"})
+        if url_str == "https://dupesite.com/page2":
+            html = """
+            <!DOCTYPE html>
+            <html>
+              <head>
+                <title>Shared Exact Title - Website Name Here</title>
+                <meta name="description" content="Different description for page two to test that only duplicate title triggers." />
+              </head>
+              <body>
+                <h1>Identical Page Heading</h1>
+              </body>
+            </html>
+            """
+            return httpx.Response(200, text=html, headers={"content-type": "text/html"})
+        return httpx.Response(404, text="Not Found")
+
+    transport = httpx.MockTransport(handler)
+    async with httpx.AsyncClient(transport=transport) as client:
+        report = await crawl_site(
+            start_url="https://dupesite.com/",
+            max_pages=5,
+            allow_private_network=True,
+            client=client,
+        )
+
+        assert len(report.pages) == 2
+        for page in report.pages:
+            assert any("Duplicate title tag across 2 pages" in iss for iss in page.issues)
+            assert any("Duplicate H1 heading across 2 pages" in iss for iss in page.issues)

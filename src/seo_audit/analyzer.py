@@ -207,28 +207,24 @@ def calculate_page_score(issues: list[str], status_code: int | None) -> int:
             score -= 20
         elif "Multiple H1" in issue:
             score -= 10
-        elif "Missing H2" in issue:
+        elif (
+            "Missing H2" in issue
+            or "Non-self-referencing canonical" in issue
+            or "Heading level skipped" in issue
+            or "Invalid JSON-LD" in issue
+            or "Redirect chain too long" in issue
+            or "Duplicate " in issue
+            or "missing alt text" in issue
+        ):
             score -= 5
-        elif "Missing canonical" in issue:
+        elif "Missing canonical" in issue or "noindex" in issue.lower():
             score -= 10
-        elif "Non-self-referencing canonical" in issue:
-            score -= 5
-        elif "missing alt text" in issue:
-            score -= 5
-        elif "missing width or height" in issue:
+        elif (
+            "missing width or height" in issue
+            or "Missing og:" in issue
+            or "Missing Twitter Card" in issue
+        ):
             score -= 2
-        elif "Heading level skipped" in issue:
-            score -= 5
-        elif "Invalid JSON-LD" in issue:
-            score -= 5
-        elif "Redirect chain too long" in issue:
-            score -= 5
-        elif "Missing og:" in issue or "Missing Twitter Card" in issue:
-            score -= 2
-        elif "noindex" in issue.lower():
-            score -= 10
-        elif "Duplicate " in issue:
-            score -= 5
 
     return max(0, min(100, score))
 
@@ -426,3 +422,40 @@ def parse_sitemap_xml(content: str) -> tuple[bool, bool, list[str]]:
                 urls.append(url_text)
 
     return True, is_index, urls
+
+
+def detect_cross_page_duplicates(pages: list[PageAudit]) -> None:
+    """Detect duplicate titles and duplicate H1s across crawled pages.
+
+    Updates page issues and recalculates scores in-place.
+    """
+    title_map: dict[str, list[PageAudit]] = {}
+    h1_map: dict[str, list[PageAudit]] = {}
+
+    for page in pages:
+        # Only check pages with successful HTTP status
+        if page.status_code and page.status_code < 400:
+            if page.title and page.title.strip():
+                normalized_title = page.title.strip().lower()
+                title_map.setdefault(normalized_title, []).append(page)
+            if page.h1_list:
+                for h1 in page.h1_list:
+                    if h1 and h1.strip():
+                        normalized_h1 = h1.strip().lower()
+                        h1_map.setdefault(normalized_h1, []).append(page)
+
+    for dupe_pages in title_map.values():
+        if len(dupe_pages) > 1:
+            for p in dupe_pages:
+                issue_text = f"Duplicate title tag across {len(dupe_pages)} pages"
+                if not any("Duplicate title tag" in iss for iss in p.issues):
+                    p.issues.append(issue_text)
+                    p.page_score = calculate_page_score(p.issues, p.status_code)
+
+    for dupe_pages in h1_map.values():
+        if len(dupe_pages) > 1:
+            for p in dupe_pages:
+                issue_text = f"Duplicate H1 heading across {len(dupe_pages)} pages"
+                if not any("Duplicate H1 heading" in iss for iss in p.issues):
+                    p.issues.append(issue_text)
+                    p.page_score = calculate_page_score(p.issues, p.status_code)
