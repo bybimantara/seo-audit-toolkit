@@ -1,0 +1,35 @@
+# Git & version control
+.git
+.gitignore
+
+# Virtual environments & Python caches
+.venv
+__pycache__
+*.py[cod]
+*$py.class
+.pytest_cache
+.ruff_cache
+
+# Build artifacts & reports
+dist
+build
+*.egg-info
+*.csv
+*.html
+*.db
+*.db-shm
+*.db-wal
+
+# Environment & secrets
+.env
+.env.*
+!.env.example
+
+# Documentation & tests (not needed in production runtime image)
+docs
+tests
+.claude
+.cursor
+.gemini
+AGENTS.md
+CHANGELOG.md

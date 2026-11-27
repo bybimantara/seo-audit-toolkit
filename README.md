@@ -99,6 +99,40 @@ Navigate to `http://127.0.0.1:8000` to run audits interactively, download report
 
 ---
 
+## Docker & Cloud Deployment
+
+The project includes a multi-stage `Dockerfile` that runs as a non-root user (`appuser`), respects dynamic `$PORT` binding, and persists SQLite audit history in `/data/history.db`.
+
+### 1. Local Docker Container
+
+Build the production image:
+```bash
+docker build -t seo-audit-toolkit .
+```
+
+Run the web dashboard with a persistent named volume for SQLite history:
+```bash
+docker run -d \
+  --name seo-audit \
+  -p 8000:8000 \
+  -v seo_audit_data:/data \
+  seo-audit-toolkit
+```
+
+Run a one-off CLI audit using the container:
+```bash
+docker run --rm seo-audit-toolkit seo-audit https://example.com --max-pages 20
+```
+
+### 2. Cloud Hosting (Render / Railway / Fly.io)
+
+- **Runtime**: Docker (auto-detected from the root `Dockerfile`).
+- **Port Binding**: The container listens on `0.0.0.0` and reads `$PORT` automatically (defaults to `8000`).
+- **Health Check Endpoint**: `GET /api/health` (returns `200 OK` with `{"status": "ok"}`).
+- **Persistent Storage**: Mount a persistent disk/volume to `/data` (or set `SEO_AUDIT_DB_PATH` to your mounted volume path) so SQLite audit history survives container restarts.
+
+---
+
 ## Testing & Code Quality
 
 Run the test suite:
